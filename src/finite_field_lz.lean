@@ -3,7 +3,6 @@ import group_theory.quotient_group
 import monoid_hom_lz
 import set_lz
 
---hello
 local attribute [instance] set_fintype
 --local attribute [-instance] set.fintype_univ
 
