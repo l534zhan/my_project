@@ -1258,7 +1258,6 @@ by {unfold a b c d, norm_num}
 lemma equality : 
 A ⬝ A + B ⬝ B + C ⬝ C + D ⬝ D = (92 : ℚ) • (1 : matrix (fin 23) (fin 23) ℚ) := 
 begin
-  admit,
   simp [cir_mul, cir_add, one_eq_cir, smul_cir],
   congr' 1,
   ext i, 
