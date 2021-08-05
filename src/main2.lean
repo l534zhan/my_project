@@ -1,18 +1,13 @@
 import tactic
 import tactic.gptf
-import algebra.field
-import data.matrix.notation
-import linear_algebra.matrix.nonsingular_inverse
-import linear_algebra.matrix.trace
 import data.fintype.card
 import data.finset.basic
 import algebra.big_operators
 import linear_algebra.char_poly.basic
 
-import finite_field_lz
-import main1
-
-set_option pp.beta true
+import finite_field
+import circulant_matrix
+import diagonal_matrix
 
 --attribute [to_additive] fintype.prod_dite
 --local attribute [-instance] set.has_coe_to_sort
@@ -24,10 +19,8 @@ open_locale big_operators
 ----------------------------------------------------------------------------
 section pre 
 
-variables {α β γ I J K L M N: Type*} (S T U : set α)
-variables {R : Type*}
-variables {m n: ℕ}
-variables [fintype I] [fintype J] [fintype K] [fintype L] [fintype M] [fintype N]
+variables {α β I J : Type*} (S T U : set α)
+variables [fintype I] [fintype J] 
 
 attribute [simp]
 private lemma set.union_to_finset 
@@ -80,24 +73,10 @@ open_locale matrix
 
 section matrix_pre
 
-def all_one [has_one α]: matrix I J α := λ i, 1
-
-def row_sum [add_comm_monoid α] (A : matrix I J α) (i : I) := ∑ j, A i j
-
-def col_sum [add_comm_monoid α] (A : matrix I J α) (j : J) := ∑ i, A i j
- 
 @[simp] private 
 lemma push_nag [add_group α] (A : matrix I J α) {i : I} {j : J} {a : α}: 
 - A i j = a ↔ A i j = -a :=
 ⟨λ h, eq_neg_of_eq_neg (eq.symm h), λ h, neg_eq_iff_neg_eq.mp (eq.symm h)⟩
-
-lemma col_one_mul_row_one [non_assoc_semiring α] : 
-col (1 : I → α) ⬝ row (1 : I → α) = all_one :=
-by ext; simp [matrix.mul, all_one]
-
-lemma row_one_mul_col_one [non_assoc_semiring α] : 
-row (1 : I → α) ⬝ col (1 : I → α) = fintype.card I • 1 :=
-by {ext, simp [mul_apply, one_apply], congr,}
 
 lemma dot_product_split_over_subtypes {R} [semiring R] 
 (v w : I → R) (p : I → Prop) [decidable_pred p] :
@@ -105,177 +84,7 @@ dot_product v w =
 ∑ j : {j : I // p j}, v j * w j + ∑ j : {j : I // ¬ (p j)}, v j * w j :=
 by { simp [dot_product], rw fintype.sum_split p}
 
-lemma is_sym_of_block_conditions
-{A : matrix I I α} {B : matrix I J α} {C : matrix J I α} {D : matrix J J α} :
-(A.is_sym) ∧ (D.is_sym) ∧ (Bᵀ = C) → (A.from_blocks B C D).is_sym :=
-begin
-  rintros ⟨h1, h2, h3⟩, 
-  have h4 : Cᵀ = B, {rw ← h3, simp},
-  unfold matrix.is_sym,
-  rw from_blocks_transpose,
-  congr;
-  assumption
-end
-
-lemma mul_transpose_self_is_sym [comm_semiring α] (A : matrix I I α) : 
-(A ⬝ Aᵀ).is_sym :=
-by simp [matrix.is_sym, transpose_mul]
-
-def is_diagonal [has_zero α] (A : matrix I I α) : Prop := ∀ i j, i ≠ j → A i j = 0
-
-def has_orthogonal_rows [has_mul α] [add_comm_monoid α] (A : matrix I J α) : Prop := 
-∀ ⦃i₁ i₂⦄, i₁ ≠ i₂ → dot_product (A i₁) (A i₂) = 0
-
-def has_orthogonal_clos [has_mul α] [add_comm_monoid α] (A : matrix I J α) : Prop := 
-∀ ⦃i₁ i₂⦄, i₁ ≠ i₂ → dot_product (λ j, A  j i₁) (λ j, A j i₂) = 0
-
-@[simp] lemma is_diagonal_apply [has_zero α] {A : matrix I I α} (ha : A.is_diagonal) {i j : I} (h : i ≠ j) : 
-A i j = 0 := ha i j h
-
-@[simp] lemma is_diagonal_of_unit [has_zero α] (A : matrix unit unit α) : (A : matrix unit unit α).is_diagonal :=
-by {intros i j h, have h':= @unit.ext i j, simp* at *}
-
-@[simp] lemma is_diagonal_of_zero [has_zero α] : (0 : matrix I I α).is_diagonal :=
-λ i j h, by simp
-
-@[simp] lemma is_diagonal_of_zero' [has_zero α] : is_diagonal (λ x y, 0 : matrix I I α) :=
-λ i j h, rfl
-
-@[simp] lemma is_diagonal_of_one [decidable_eq I] [has_zero α] [has_one α] : (1 : matrix I I α).is_diagonal :=
-by {intros i j h, simp *}
-
-@[simp] lemma is_sym_of_one [decidable_eq I] [has_zero α] [has_one α] : 
-(1 : matrix I I α).is_sym := by {ext, simp}
-
-lemma is_sym_of_one' [decidable_eq I] [has_zero α] [has_one α] (i j : I): 
-(1 : matrix I I α) i j = (1 : matrix I I α) j i :=
-by { have h := congr_fun (congr_fun (@is_sym_of_one α _ _ _ _ _) i) j, 
-     rw [transpose_apply] at h,
-     exact h.symm }
-
-@[simp] lemma is_sym_of_neg_one [decidable_eq I] [has_zero α] [has_one α] [has_neg α] : 
-(-1 : matrix I I α).is_sym := by {ext, simp}
-
-@[simp] lemma is_diagonal_of_smul_one
-[decidable_eq I] [monoid R] [add_monoid α] [has_one α] [distrib_mul_action R α] (k : R) : 
-(k • (1 : matrix I I α)).is_diagonal := by {intros i j h, simp *}
-
-@[simp] lemma is_sym_of_smul_one
-[decidable_eq I] [monoid R] [add_monoid α] [has_one α] [distrib_mul_action R α] (k : R) : 
-(k • (1 : matrix I I α)).is_sym := 
-by { ext, simp, rw [is_sym_of_one' j i] }
-
-@[simp] lemma is_diagonal_add [add_zero_class α] {A B : matrix I I α} (ha : A.is_diagonal) (hb : B.is_diagonal) :
-(A + B).is_diagonal := by {intros i j h, simp *, rw [ha i j h, hb i j h], simp}
-
-lemma is_diagonal_iff_diagonal [has_zero α] [decidable_eq I] (A : matrix I I α) : 
-A.is_diagonal ↔ (∃ d, A = diagonal d):=
-begin
-  split,
-  { intros h, use (λ i, A i i), 
-    ext, 
-    specialize h i j,
-    by_cases i = j; 
-    simp * at *, },
-  { rintros ⟨d, rfl⟩ i j h, simp *}
-end
-
-lemma is_diagnoal_of_block_conditions [has_zero α] 
-{A : matrix I I α} {B : matrix I J α} {C : matrix J I α} {D : matrix J J α} :
-(A.is_diagonal) ∧ (D.is_diagonal) ∧ (B = 0) ∧ (C = 0) → (A.from_blocks B C D).is_diagonal:=
-begin
-  rintros h (i | i) (j | j) hij,
-  any_goals {rcases h with ⟨ha, hd, hb, hc⟩, simp* at *},
-  {have h' : i ≠ j, {simp* at *}, exact ha i j h'},
-  {have h' : i ≠ j, {simp* at *}, exact hd i j h'},
-end
-
-lemma block_conditions_of_is_sym
-{A : matrix I I α} {B : matrix I J α} {C : matrix J I α} {D : matrix J J α} :
-(A.from_blocks B C D).is_sym → (A.is_sym) ∧ (D.is_sym) ∧ (Cᵀ = B) ∧ (Bᵀ = C) :=
-begin
-  rintros h, 
-  unfold matrix.is_sym at h,
-  rw from_blocks_transpose at h,
-  have h1 : (Aᵀ.from_blocks Cᵀ Bᵀ Dᵀ).to_blocks₁₁ = (A.from_blocks B C D).to_blocks₁₁, {rw h},
-  have h2 : (Aᵀ.from_blocks Cᵀ Bᵀ Dᵀ).to_blocks₁₂ = (A.from_blocks B C D).to_blocks₁₂, {rw h},
-  have h3 : (Aᵀ.from_blocks Cᵀ Bᵀ Dᵀ).to_blocks₂₁ = (A.from_blocks B C D).to_blocks₂₁, {rw h},
-  have h4 : (Aᵀ.from_blocks Cᵀ Bᵀ Dᵀ).to_blocks₂₂ = (A.from_blocks B C D).to_blocks₂₂, {rw h},
-  simp at *,
-  use ⟨h1, h4, h2, h3⟩
-end
-
-lemma is_diagnoal_of_sym_block_conditions [has_zero α] 
-{A : matrix I I α} {B : matrix I J α} {C : matrix J I α} {D : matrix J J α}
-(sym : (A.from_blocks B C D).is_sym) :
-(A.is_diagonal) ∧ (D.is_diagonal) ∧ (B = 0) → (A.from_blocks B C D).is_diagonal:=
-begin
-  rintros h,
-  apply is_diagnoal_of_block_conditions,
-  refine ⟨h.1, h.2.1, h.2.2, _⟩,
-  obtain ⟨g1, g2, g3, g4⟩ :=block_conditions_of_is_sym sym,
-  simp [← g4, h.2.2]
-end
-
-lemma is_diagnoal_of_sym_block_conditions' [has_zero α] 
-{A : matrix I I α} {B : matrix I J α} {C : matrix J I α} {D : matrix J J α}
-{M : matrix (I ⊕ J) (I ⊕ J) α} (sym : M.is_sym) (h : M = A.from_blocks B C D) :
-(A.is_diagonal) ∧ (D.is_diagonal) ∧ (B = 0) → M.is_diagonal:=
-begin
-  rw h at sym,
-  convert is_diagnoal_of_sym_block_conditions sym,
-  rw h,
-end
-
-lemma mul_tranpose_is_diagonal_iff_has_orthogonal_rows
-[has_mul α] [add_comm_monoid α] (A : matrix I J α) :
-(A ⬝ Aᵀ).is_diagonal ↔ A.has_orthogonal_rows :=
-begin
-  split,
-  { rintros h i1 i2 hi,
-    have h' := h i1 i2 hi,
-    simp [dot_product, mul_apply,*] at *, },
-  { intros ha i j h,
-    have h':= ha h,
-    simp [mul_apply, *, dot_product] at *,
-  }
-end
-
-lemma tranpose_mul_is_diagonal_iff_has_orthogonal_cols
-[has_mul α] [add_comm_monoid α] (A : matrix I J α) :
-(Aᵀ ⬝ A).is_diagonal ↔ A.has_orthogonal_clos :=
-begin
-  split,
-  { rintros h i1 i2 hi,
-    have h' := h i1 i2 hi,
-    simp [dot_product, mul_apply,*] at *, },
-  { intros ha i j h,
-    have h':= ha h,
-    simp [mul_apply, *, dot_product] at *,
-  }
-end
-
-lemma Kronecker_prod_is_diagonal_of_both_are_diagonal [mul_zero_class α]
-{A : matrix I I α} {B : matrix J J α} (ga: A.is_diagonal) (gb: B.is_diagonal): 
-(A ⊗ B).is_diagonal := 
-begin
-  rintros ⟨a, b⟩ ⟨c, d⟩ h,
-  simp [Kronecker],
-  by_cases ha: a = c,
-  have hb: b ≠ d, {intros hb, rw [ha, hb] at h, apply h rfl},
-  rw (gb _ _ hb), simp,
-  rw (ga _ _ ha), simp,
-end
-
-lemma mul_tranpose_eq_diagonal_iff_has_orthogonal_rows
-[has_mul α] [add_comm_monoid α] [decidable_eq I] (A : matrix I J α) :
-(∃ d, A ⬝ Aᵀ = diagonal d) ↔ A.has_orthogonal_rows :=
-by rw [←is_diagonal_iff_diagonal, mul_tranpose_is_diagonal_iff_has_orthogonal_rows]
-
-lemma tranpose_mul_eq_diagonal_iff_has_orthogonal_cols
-[has_mul α] [add_comm_monoid α] [decidable_eq J] (A : matrix I J α) :
-(∃ d, Aᵀ ⬝ A = diagonal d) ↔ A.has_orthogonal_clos :=
-by rw [←is_diagonal_iff_diagonal, tranpose_mul_is_diagonal_iff_has_orthogonal_cols]
+def reindex_square (f : I ≃ J) := @reindex _ _ _ _ _ _ _ _ α f f
 
 end matrix_pre
 
@@ -345,10 +154,6 @@ set.disjoint_of_compl' _
 disjoint (matched H i₁ i₂).to_finset (mismatched H i₁ i₂).to_finset :=
 by simp [set.to_finset_disjoint_iff]
 
---@[simp] lemma match_disjoint_mismatch_finset' (H : matrix I I ℚ) (i₁ i₂ : I) :
---disjoint {j : I | H i₁ j = H i₂ j}.to_finset {j : I | ¬H i₁ j = H i₂ j}.to_finset :=
---by simp [set.to_finset_disjoint_iff]
-
 lemma card_match_add_card_mismatch [decidable_eq I] (H : matrix I I ℚ) (i₁ i₂ : I) :
 set.card (@set.univ I) = set.card (matched H i₁ i₂) + set.card (mismatched H i₁ i₂) :=
 set.card_disjoint_union' (disjoint_match_mismatch _ _ _) (match_union_mismatch _ _ _)
@@ -364,53 +169,70 @@ end set
 open matrix Hadamard_matrix
 
 /- ## basic properties  -/
-
 section properties
+namespace Hadamard_matrix
+
 variables (H : matrix I I ℚ) [Hadamard_matrix H]
 variables (H' : matrix (fin n) (fin n) ℚ) [Hadamard_matrix H']
 
-attribute [simp] Hadamard_matrix.one_or_neg_one
+attribute [simp] one_or_neg_one
 
-@[simp] lemma Hadamard_matrix.neg_one_or_one (i j : I) : (H i j) = -1 ∨ (H i j) = 1 :=
+@[simp] lemma neg_one_or_one (i j : I) : (H i j) = -1 ∨ (H i j) = 1 :=
 (one_or_neg_one H i j).swap
 
-@[simp] lemma Hadamard_matrix.entry_mul_self (i j : I) :
+@[simp] lemma entry_mul_self (i j : I) :
 (H i j) * (H i j) = 1 :=
 by rcases one_or_neg_one H i j; simp* at *
 
 variables {H}
-lemma Hadamard_matrix.entry_eq 
-{i j k l : I} (h : H i j ≠ H k l) (h' : H i j = 1):
-H i j = 1 → H k l = -1 :=
-by rcases one_or_neg_one H k l; simp* at *
 
-lemma Hadamard_matrix.entry_eq' 
-{i j k l : I} (h : H i j ≠ H k l) (h' : H i j = -1):
-H k l = 1 :=
-by rcases one_or_neg_one H k l; simp* at *
+lemma entry_eq_one_of_ne_neg_one {i j : I} (h : H i j ≠ -1) :
+H i j = 1 := by {have := one_or_neg_one H i j, tauto}
+
+lemma entry_eq_neg_one_of_ne_one {i j : I} (h : H i j ≠ 1) :
+H i j = -1 := by {have := one_or_neg_one H i j, tauto}
+
+lemma entry_eq_neg_one_of {i j k l : I} (h : H i j ≠ H k l) (h' : H i j = 1):
+H k l = -1 := by rcases one_or_neg_one H k l; simp* at *
+
+lemma entry_eq_one_of {i j k l : I} (h : H i j ≠ H k l) (h' : H i j = -1):
+H k l = 1 := by rcases one_or_neg_one H k l; simp* at *
+
+lemma entry_eq_entry_of {a b c d e f : I} (h₁: H a b ≠ H c d) (h₂: H a b ≠ H e f) :
+H c d = H e f := 
+begin
+  by_cases g : H a b = 1,
+  { have g₁ := entry_eq_neg_one_of h₁ g,
+    have g₂ := entry_eq_neg_one_of h₂ g,
+    linarith },
+  { replace g:= entry_eq_neg_one_of_ne_one g,
+    have g₁ := entry_eq_one_of h₁ g,
+    have g₂ := entry_eq_one_of h₂ g,
+    linarith }
+end
 
 variables (H)
-@[simp] lemma Hadamard_matrix.entry_mul_mismatch {i j k l : I} (h : H i j ≠ H k l):
+@[simp] lemma entry_mul_mismatch {i j k l : I} (h : H i j ≠ H k l):
 (H i j) * (H k l) = -1 :=
 by {rcases one_or_neg_one H i j; 
-    simp [*, Hadamard_matrix.entry_eq h, Hadamard_matrix.entry_eq' h] at *,}
+    simp [*, entry_eq_one_of h, entry_eq_neg_one_of h] at *,}
 
-@[simp] lemma Hadamard_matrix.row_dot_product_self (i : I) :
+@[simp] lemma row_dot_product_self (i : I) :
 dot_product (H i) (H i) = card I := by simp [dot_product, finset.card_univ]
 
-@[simp] lemma Hadamard_matrix.col_dot_product_self (j : I) :
+@[simp] lemma col_dot_product_self (j : I) :
 dot_product (λ i, H i j) (λ i, H i j) = card I := by simp [dot_product, finset.card_univ]
 
-@[simp] lemma Hadamard_matrix.row_dot_product_other {i₁ i₂ : I} (h : i₁ ≠ i₂) :
+@[simp] lemma row_dot_product_other {i₁ i₂ : I} (h : i₁ ≠ i₂) :
 dot_product (H i₁) (H i₂) = 0 := orthogonal_rows H h
  
-@[simp] lemma Hadamard_matrix.row_dot_product_other' {i₁ i₂ : I} (h : i₂ ≠ i₁) :
+@[simp] lemma row_dot_product_other' {i₁ i₂ : I} (h : i₂ ≠ i₁) :
 dot_product (H i₁) (H i₂)= 0 := by simp [ne.symm h]
 
-@[simp] lemma Hadamard_matrix.row_dot_product'_other {i₁ i₂ : I} (h : i₁ ≠ i₂) :
+@[simp] lemma row_dot_product'_other {i₁ i₂ : I} (h : i₁ ≠ i₂) :
 ∑ j, (H i₁ j) * (H i₂ j) = 0 := orthogonal_rows H h
 
-lemma Hadamard_matrix.mul_tanspose [decidable_eq I] :
+lemma mul_tanspose [decidable_eq I] :
 H ⬝ Hᵀ = (card I : ℚ) • 1 :=
 begin
   ext, have : int.one = 1, {refl},
@@ -418,20 +240,20 @@ begin
   by_cases i = j; simp [*, mul_one] at *,
 end
 
-lemma Hadamard_matrix.det_sq [decidable_eq I] :
+lemma det_sq [decidable_eq I] :
 (det H)^2 = (card I)^(card I) :=
 calc (det H)^2 = (det H) * (det H) : by ring
            ... = det (H ⬝ Hᵀ) : by simp
-           ... = det ((card I : ℚ) • (1 : matrix I I ℚ)) : by rw Hadamard_matrix.mul_tanspose
+           ... = det ((card I : ℚ) • (1 : matrix I I ℚ)) : by rw mul_tanspose
            ... = (card I : ℚ)^(card I) : by simp
 
-lemma Hadamard_matrix.mul_tanspose': H' ⬝ H'ᵀ = (n : ℚ) • 1 :=
-by simp [Hadamard_matrix.mul_tanspose]
+lemma mul_tanspose': H' ⬝ H'ᵀ = (n : ℚ) • 1 :=
+by simp [mul_tanspose]
 
-lemma Hadamard_matrix.right_invertible [decidable_eq I] : 
+lemma right_invertible [decidable_eq I] : 
 H ⬝ ((1 / (card I : ℚ)) • Hᵀ) = 1 :=
 begin
-  have h := Hadamard_matrix.mul_tanspose H,
+  have h := mul_tanspose H,
   by_cases hI : card I = 0,
   {exact @eq_of_empty _ _ _ (card_eq_zero_iff.mp hI) _ _}, --trivial case 
   have h':= congr_arg (has_scalar.smul (1 / (card I : ℚ))) h,
@@ -440,34 +262,34 @@ begin
   rwa [←smul_assoc, aux, ←mul_smul, one_smul] at h',
 end
 
-lemma Hadamard_matrix.invertible [decidable_eq I] : invertible H :=
+lemma invertible [decidable_eq I] : invertible H :=
 invertible_of_right_inverse (Hadamard_matrix.right_invertible _)
 
-lemma Hadamard_matrix.nonsing_inv_eq [decidable_eq I] : H⁻¹ = (1 / (card I : ℚ)) • Hᵀ :=
+lemma nonsing_inv_eq [decidable_eq I] : H⁻¹ = (1 / (card I : ℚ)) • Hᵀ :=
 inv_eq_right_inv (Hadamard_matrix.right_invertible _)
 
-lemma Hadamard_matrix.tanspose_mul [decidable_eq I] :
+lemma tanspose_mul [decidable_eq I] :
 Hᵀ ⬝ H = ((card I) : ℚ) • 1 :=
 begin
-  rw [←nonsing_inv_right_left (Hadamard_matrix.right_invertible H), smul_mul, ←smul_assoc],
+  rw [←nonsing_inv_right_left (right_invertible H), smul_mul, ←smul_assoc],
   by_cases hI : card I = 0,
   {exact @eq_of_empty _ _ _ (card_eq_zero_iff.mp hI) _ _}, --trivial case 
   simp* at *,
 end
 
 -- We are now able to prove:
-@[simp] lemma Hadamard_matrix.col_dot_product_other [decidable_eq I] {j₁ j₂ : I} (h : j₁ ≠ j₂) :
+@[simp] lemma col_dot_product_other [decidable_eq I] {j₁ j₂ : I} (h : j₁ ≠ j₂) :
 dot_product (λ i, H i j₁) (λ i, H i j₂) = 0 :=
 begin
-  have h':= congr_fun (congr_fun (Hadamard_matrix.tanspose_mul H) j₁) j₂,
+  have h':= congr_fun (congr_fun (tanspose_mul H) j₁) j₂,
   simp [matrix.mul, transpose, has_one.one, diagonal, h] at h',
   assumption,
 end
 
-@[simp] lemma Hadamard_matrix.col_dot_product_other' [decidable_eq I] {j₁ j₂ : I} (h : j₂ ≠ j₁) :
+@[simp] lemma col_dot_product_other' [decidable_eq I] {j₁ j₂ : I} (h : j₂ ≠ j₁) :
 dot_product (λ i, H i j₁) (λ i, H i j₂)= 0 := by simp [ne.symm h]
 
-lemma Hadamard_matrix.card_match_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
+lemma card_match_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 (set.card (matched H i₁ i₂) : ℚ) = ∑ j in (matched H i₁ i₂).to_finset, H i₁ j * H i₂ j :=
 begin
   simp [matched],
@@ -481,7 +303,7 @@ begin
   congr,
 end
 
-lemma Hadamard_matrix.neg_card_mismatch_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
+lemma neg_card_mismatch_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 - (set.card (mismatched H i₁ i₂) : ℚ) = ∑ j in (mismatched H i₁ i₂).to_finset, H i₁ j * H i₂ j :=
 begin
   simp [mismatched],
@@ -498,29 +320,27 @@ begin
   congr,
 end
 
-lemma Hadamard_matrix.card_mismatch_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
+lemma card_mismatch_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 (set.card (mismatched H i₁ i₂) : ℚ) = - ∑ j in (mismatched H i₁ i₂).to_finset, H i₁ j * H i₂ j :=
-by {rw [←Hadamard_matrix.neg_card_mismatch_eq]; simp* at *}
+by {rw [←neg_card_mismatch_eq]; simp* at *}
 
-lemma Hadamard_matrix.card_match_eq_card_mismatch_ℚ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
+lemma card_match_eq_card_mismatch_ℚ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 (set.card (matched H i₁ i₂) : ℚ)= set.card (mismatched H i₁ i₂) :=
 begin
   have eq := dot_product_split H i₁ i₂,
-  rw [Hadamard_matrix.card_match_eq H h, Hadamard_matrix.card_mismatch_eq H h],
-  simp only [set.to_finset_univ, Hadamard_matrix.row_dot_product'_other H h] at eq,
+  rw [card_match_eq H h, card_mismatch_eq H h],
+  simp only [set.to_finset_univ, row_dot_product'_other H h] at eq,
   linarith,
 end
 
-lemma Hadamard_matrix.card_match_eq_card_mismatch_ℕ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
+lemma card_match_eq_card_mismatch_ℕ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 set.card (matched H i₁ i₂) = set.card (mismatched H i₁ i₂) :=
 begin
-  have h := Hadamard_matrix.card_match_eq_card_mismatch_ℚ H h,
+  have h := card_match_eq_card_mismatch_ℚ H h,
   simp * at *,
 end
 
-def reindex_square (f : I ≃ J) := @reindex _ _ _ _ _ _ _ _ α f f
-
-lemma Hadamard_matrix.reindex (f : I ≃ J) : Hadamard_matrix (reindex_square f H) :=
+lemma reindex (f : I ≃ J) : Hadamard_matrix (reindex_square f H) :=
 begin
   simp [reindex_square],
   refine {..},
@@ -532,8 +352,11 @@ begin
   simp [h']
 end
 
+end Hadamard_matrix
 end properties
 /- ## end basic properties  -/
+
+open Hadamard_matrix
 
 /- ## basic constructions-/
 section basic_constr
@@ -687,7 +510,7 @@ end
 
 local notation `redindex` := equiv.sum_self_equiv_prod_unit_sum_unit
 
-lemma Sylvester_constr'_eq_reindex_Sylvester_constr 
+lemma Sylvester_constr₀'_eq_reindex_Sylvester_constr₀ 
 (H : matrix I I ℚ) [Hadamard_matrix H] : 
 H.Sylvester_constr₀' = (reindex_square redindex) H.Sylvester_constr₀ :=
 begin
@@ -704,7 +527,22 @@ Hadamard_matrix (Sylvester_constr₀' H) :=
 begin
   have inst := Hadamard_matrix.Sylvester_constr₀ H, resetI,
   convert Hadamard_matrix.reindex H.Sylvester_constr₀ redindex,
-  exact H.Sylvester_constr'_eq_reindex_Sylvester_constr,
+  exact H.Sylvester_constr₀'_eq_reindex_Sylvester_constr₀,
+end
+
+theorem Hadamard_matrix.order_conclusion_1: 
+∀ (n : ℕ), ∃ {I : Type*} [inst : fintype I] 
+{H : @matrix I I inst inst ℚ} (h : @Hadamard_matrix I inst H), 
+@fintype.card I inst = 2^n := 
+begin
+  intro n,
+  induction n with n hn,
+  { refine ⟨punit, (infer_instance), H_1', Hadamard_matrix.H_1', by simp⟩ },
+  rcases hn with ⟨I, inst, H, h, hI⟩,
+  resetI,
+  refine ⟨ I ⊕ I, infer_instance, H.Sylvester_constr₀, infer_instance, _ ⟩,
+  rw [fintype.card_sum, hI],
+  ring_nf,
 end
 
 end Sylvester_constr
@@ -744,10 +582,16 @@ theorem Hadamard_matrix.Sylvester_constr
 Hadamard_matrix (Sylvester_constr H₁ H₂) :=
 Hadamard_matrix.Sylvester_constr' H₁ H₂
 
+theorem {u v} Hadamard_matrix.order_conclusion_2 {I : Type u} {J : Type v} [fintype I] [fintype J]
+(H₁ : matrix I I ℚ) [Hadamard_matrix H₁] (H₂ : matrix J J ℚ) [Hadamard_matrix H₂] :
+∃ {K : Type max u v} [inst : fintype K] (H : @matrix K K inst inst ℚ), 
+@Hadamard_matrix K inst H ∧ @fintype.card K inst = card I * card J :=
+⟨(I × J), _, Sylvester_constr H₁ H₂, ⟨infer_instance, card_prod I J⟩⟩
+
 end general_Sylvester_constr
 /- ## end general Sylvester construction  -/
 
-/-
+
 /- ## Paley construction -/
 section Paley_construction
 
@@ -762,7 +606,10 @@ variable (F)
 
 namespace Jacobsthal_matrix
 
+lemma eq_cir : (Jacobsthal_matrix F) = cir χ := rfl
+
 variable {F}
+
 @[simp] lemma diag_entry_eq_zero (i : F) : (Jacobsthal_matrix F) i i = 0 :=
 by simp [Jacobsthal_matrix]
 
@@ -820,32 +667,15 @@ end
 
 variables {F} 
 
-lemma is_sym_of (h : card F ≡ 1 [MOD 4]) : 
+lemma is_sym_of (h : q ≡ 1 [MOD 4]) : 
 (Jacobsthal_matrix F).is_sym := 
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F,
-  resetI,
-  obtain hp := char_ne_two p (or.inl h),
-  ext,
-  simp [Jacobsthal_matrix],
-  have := quad_char_eq_one_of (by simp) ((@neg_one_eq_sq_iff_card_eq_one_mod_four F _ _ _ inst hp).2 h),
-  rw [← one_mul (χ (j - i)), ← this, ← quad_char_mul hp],
-  congr, ring,
-  assumption
+  rw [eq_cir, cir_is_sym_ext_iff],
+  exact quad_char_is_sym_of h
 end
 
 lemma is_sym_of' (h : card F ≡ 1 [MOD 4]) : 
 (Jacobsthal_matrix F)ᵀ = Jacobsthal_matrix F := is_sym_of h
-
-lemma char_j_sub_i_eq_char_i_sub_j (h : q ≡ 1 [MOD 4]) (i j : F) :
-χ (j - i) = χ (i - j) :=
-begin
-  have g := is_sym_of h,
-  simp [matrix.is_sym, Jacobsthal_matrix] at g,
-  have g' := congr_fun (congr_fun g i) j,
-  simp [transpose_apply] at g',
-  assumption
-end
 
 lemma is_skewsym_of (h : q ≡ 3 [MOD 4]) : 
 (Jacobsthal_matrix F).is_skewsym := 
@@ -874,8 +704,6 @@ begin
   simp,
 end
 
--- When q is a prime number, J is a circulant matrix. 
-
 end Jacobsthal_matrix
 /- ## end Jacobsthal_matrix -/
 
@@ -900,6 +728,8 @@ begin
 end
 
 variable {F}
+
+@[instance]
 theorem Hadamard_matrix.Paley_constr_1 (h : q ≡ 3 [MOD 4]): 
 Hadamard_matrix (Paley_constr_1 F) := 
 begin
@@ -1051,7 +881,7 @@ begin
     obtain (a | a) := a,
     any_goals { obtain (b | b) := b },
     any_goals { simp [pre_1, pre_2, sq, one_apply] },
-    any_goals { rw [char_j_sub_i_eq_char_i_sub_j hF i j], ring },
+    any_goals { simp [quad_char_is_sym_of' hF i j], ring },
   },
   any_goals {apply finset.sum_congr rfl, intros k hk, simp at hk, simp [fintype.sum_sum_type]},
   push_neg at hk,
@@ -1100,8 +930,9 @@ begin
   any_goals {simp [h]},
 end
 
-
 variable {F}
+
+@[instance]
 theorem Hadamard_matrix.Paley_constr_2 (h : card F ≡ 1 [MOD 4]): 
 Hadamard_matrix (Paley_constr_2 F) :=
 begin
@@ -1120,7 +951,7 @@ begin
   { simp only [col_one_mul_row_one, sq_replace_Jacobsthal_matrix h, ← add_K],
     refine Kronecker_prod_is_diagonal_of_both_are_diagonal _ sq_is_diagonal,
     simp },
-  { simp [replace_zero, replace_transpose, is_sym_of' h, replace_minus_row_one, K_mul],
+  { simp [replace_zero, replace_transpose, (is_sym_of h).eq, replace_minus_row_one, K_mul],
     ext ⟨i, a⟩ ⟨j, b⟩,
     simp [dmatrix.add_apply, mul_apply, ←finset.univ_product_univ, finset.sum_product],
     rw finset.sum_comm,
@@ -1140,23 +971,10 @@ end
 /- ## end Paley_constr_2 -/
 end Paley_construction
 /- ## end Paley construction -/
--/
+
 
 /- ## order 92-/
 section order_92
-
-variables [comm_ring R]
-
-def poly (n : ℕ) : polynomial (matrix (fin n) (fin n) R)  := sorry
-
--- aeval M (char_poly M)
-
-def circulant' {α : Type*} {n : ℕ} (v : fin n → α) : matrix (fin n) (fin n) α :=
-polynomial.aeval v (poly n)
-
-@[reducible]
-def circulant {α : Type*} {n : ℕ} (v : fin n → α) : matrix (fin n) (fin n) α
-| i j := v (i - j)
 
 namespace H_92
 
@@ -1169,19 +987,340 @@ def c : fin 23 → ℚ :=
 def d : fin 23 → ℚ := 
 ![ 1,  1,  1, -1,  1,  1,  1, -1,  1, -1, -1, -1, -1, -1, -1,  1, -1,  1,  1,  1, -1,  1,  1]
 
-local notation `A` := circulant a
-local notation `B` := circulant b
-local notation `C` := circulant c
-local notation `D` := circulant d
+abbreviation A := cir a
+abbreviation B := cir b
+abbreviation C := cir c
+abbreviation D := cir d
 
-lemma eq : A^2 + B^2 + C^2 + D^2 = (92 : matrix (fin 23) (fin 23) ℚ) := 
+@[simp] lemma a.one_or_neg_one : ∀ i, a i ∈ ({1, -1} : set ℚ) := 
+λ i, begin simp, dec_trivial! end
+@[simp] lemma b.one_or_neg_one : ∀ i, b i ∈ ({1, -1} : set ℚ) := 
+λ i, begin simp, dec_trivial! end
+@[simp] lemma c.one_or_neg_one : ∀ i, c i ∈ ({1, -1} : set ℚ) := 
+λ i, begin simp, dec_trivial! end
+@[simp] lemma d.one_or_neg_one : ∀ i, d i ∈ ({1, -1} : set ℚ) := 
+λ i, begin simp, dec_trivial! end
+
+@[simp] lemma A.one_or_neg_one : ∀ i j, A i j = 1 ∨ A i j = -1 := 
+by convert cir_entry_in_of_vec_entry_in a.one_or_neg_one
+@[simp] lemma A.neg_one_or_one : ∀ i j, A i j = -1 ∨ A i j = 1 := 
+λ i j, (A.one_or_neg_one i j).swap
+@[simp] lemma B.one_or_neg_one : ∀ i j, B i j = 1 ∨ B i j = -1 := 
+by convert cir_entry_in_of_vec_entry_in b.one_or_neg_one
+@[simp] lemma B.neg_one_or_one : ∀ i j, B i j = -1 ∨ B i j = 1 := 
+λ i j, (B.one_or_neg_one i j).swap
+@[simp] lemma C.one_or_neg_one : ∀ i j, C i j = 1 ∨ C i j = -1 := 
+by convert cir_entry_in_of_vec_entry_in c.one_or_neg_one
+@[simp] lemma C.neg_one_or_one : ∀ i j, C i j = -1 ∨ C i j = 1 := 
+λ i j, (C.one_or_neg_one i j).swap
+@[simp] lemma D.one_or_neg_one : ∀ i j, D i j = 1 ∨ D i j = -1 := 
+by convert cir_entry_in_of_vec_entry_in d.one_or_neg_one
+@[simp] lemma D.neg_one_or_one : ∀ i j, D i j = -1 ∨ D i j = 1 := 
+λ i j, (D.one_or_neg_one i j).swap
+
+@[simp] lemma a_is_sym : ∀ (i : fin 23), a (-i) = a i := by dec_trivial
+
+@[simp] lemma a_is_sym' : ∀ (i : fin 23), 
+![(1 : ℚ), 1, -1, -1, -1,  1, -1, -1, -1,  1, -1,  1,  1, -1,  1, -1, -1, -1,  1, -1, -1, -1,  1] (-i) = 
+![(1 : ℚ), 1, -1, -1, -1,  1, -1, -1, -1,  1, -1,  1,  1, -1,  1, -1, -1, -1,  1, -1, -1, -1,  1]   i := 
+by convert a_is_sym
+
+@[simp] lemma b_is_sym : ∀ (i : fin 23), b (-i) = b i := by dec_trivial
+
+@[simp] lemma b_is_sym' : ∀ (i : fin 23), 
+![(1 : ℚ), -1,  1,  1, -1,  1,  1, -1, -1,  1,  1,  1,  1,  1,  1, -1, -1,  1,  1, -1,  1,  1, -1] (-i) = 
+![(1 : ℚ), -1,  1,  1, -1,  1,  1, -1, -1,  1,  1,  1,  1,  1,  1, -1, -1,  1,  1, -1,  1,  1, -1]   i := 
+by convert b_is_sym
+
+@[simp] lemma c_is_sym : ∀ (i : fin 23), c (-i) = c i := by dec_trivial
+
+@[simp] lemma c_is_sym' : ∀ (i : fin 23), 
+![ (1 : ℚ), 1,  1, -1, -1, -1,  1,  1, -1,  1, -1,  1,  1, -1,  1, -1,  1,  1, -1, -1, -1,  1,  1] (-i) = 
+![ (1 : ℚ), 1,  1, -1, -1, -1,  1,  1, -1,  1, -1,  1,  1, -1,  1, -1,  1,  1, -1, -1, -1,  1,  1]   i := 
+by convert c_is_sym
+
+@[simp] lemma d_is_sym : ∀ (i : fin 23), d (-i) = d i := by dec_trivial
+
+@[simp] lemma d_is_sym' : ∀ (i : fin 23), 
+![ (1 : ℚ), 1,  1, -1,  1,  1,  1, -1,  1, -1, -1, -1, -1, -1, -1,  1, -1,  1,  1,  1, -1,  1,  1] (-i) = 
+![ (1 : ℚ), 1,  1, -1,  1,  1,  1, -1,  1, -1, -1, -1, -1, -1, -1,  1, -1,  1,  1,  1, -1,  1,  1]   i := 
+by convert d_is_sym
+
+@[simp] lemma A_is_sym : Aᵀ = A :=  
+by rw [←is_sym, cir_is_sym_ext_iff]; exact a_is_sym
+@[simp] lemma B_is_sym : Bᵀ = B :=  
+by rw [←is_sym, cir_is_sym_ext_iff]; exact b_is_sym
+@[simp] lemma C_is_sym : Cᵀ = C :=  
+by rw [←is_sym, cir_is_sym_ext_iff]; exact c_is_sym
+@[simp] lemma D_is_sym : Dᵀ = D :=  
+by rw [←is_sym, cir_is_sym_ext_iff]; exact d_is_sym
+
+def i : matrix (fin 4) (fin 4) ℚ := 
+![![0, 1, 0, 0],
+  ![-1, 0, 0, 0],
+  ![0, 0, 0, -1],
+  ![0, 0, 1, 0]]
+
+def j : matrix (fin 4) (fin 4) ℚ := 
+![![0, 0, 1, 0],
+  ![0, 0, 0, 1],
+  ![-1, 0, 0, 0],
+  ![0, -1, 0, 0]]
+
+def k: matrix (fin 4) (fin 4) ℚ := 
+![![0, 0, 0, 1], 
+  ![0, 0, -1, 0], 
+  ![0, 1, 0, 0], 
+  ![-1, 0, 0, 0]]
+
+@[simp] lemma i_is_skewsym : iᵀ = - i := by dec_trivial
+@[simp] lemma j_is_skewsym : jᵀ = - j := by dec_trivial
+@[simp] lemma k_is_skewsym : kᵀ = - k := by dec_trivial
+
+@[simp] lemma i_mul_i : (i ⬝ i) = -1 := by simp [i]; dec_trivial
+@[simp] lemma j_mul_j : (j ⬝ j) = -1 := by simp [j]; dec_trivial
+@[simp] lemma k_mul_k : (k ⬝ k) = -1 := by simp [k]; dec_trivial
+@[simp] lemma i_mul_j : (i ⬝ j) = k := by simp [i, j, k]; dec_trivial
+@[simp] lemma i_mul_k : (i ⬝ k) = -j := by simp [i, j, k]; dec_trivial
+@[simp] lemma j_mul_i : (j ⬝ i) = -k := by simp [i, j, k]; dec_trivial
+@[simp] lemma k_mul_i : (k ⬝ i) = j := by simp [i, j, k]; dec_trivial
+@[simp] lemma j_mul_k : (j ⬝ k) = i := by simp [i, j, k]; dec_trivial
+@[simp] lemma k_mul_j : (k ⬝ j) = -i := by simp [i, j, k]; dec_trivial
+
+lemma fin_23_shift (f : fin 23 → ℚ) (s : fin 23 → fin 23): 
+(λ (j : fin 23), f (s j)) = 
+![f (s 0), f (s 1), f (s 2), f (s 3), f (s 4), f (s 5), f (s 6), f (s 7), 
+  f (s 8), f (s 9), f (s 10), f (s 11), f (s 12), f (s 13), f (s 14), f (s 15), 
+  f (s 16), f (s 17), f (s 18), f (s 19), f (s 20), f (s 21), f (s 22)] :=
+by {ext i, fin_cases i, any_goals {simp},}
+
+@[simp] lemma eq_aux₁: 
+dot_product (λ (j : fin 23), a (1 - j)) a + 
+dot_product (λ (j : fin 23), b (1 - j)) b + 
+dot_product (λ (j : fin 23), c (1 - j)) c + 
+dot_product (λ (j : fin 23), d (1 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₂: 
+dot_product (λ (j : fin 23), a (2 - j)) a + 
+dot_product (λ (j : fin 23), b (2 - j)) b + 
+dot_product (λ (j : fin 23), c (2 - j)) c + 
+dot_product (λ (j : fin 23), d (2 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₃: 
+dot_product (λ (j : fin 23), a (3 - j)) a + 
+dot_product (λ (j : fin 23), b (3 - j)) b + 
+dot_product (λ (j : fin 23), c (3 - j)) c + 
+dot_product (λ (j : fin 23), d (3 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₄: 
+dot_product (λ (j : fin 23), a (4 - j)) a + 
+dot_product (λ (j : fin 23), b (4 - j)) b + 
+dot_product (λ (j : fin 23), c (4 - j)) c + 
+dot_product (λ (j : fin 23), d (4 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₅: 
+dot_product (λ (j : fin 23), a (5 - j)) a + 
+dot_product (λ (j : fin 23), b (5 - j)) b + 
+dot_product (λ (j : fin 23), c (5 - j)) c + 
+dot_product (λ (j : fin 23), d (5 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₆: 
+dot_product (λ (j : fin 23), a (6 - j)) a + 
+dot_product (λ (j : fin 23), b (6 - j)) b + 
+dot_product (λ (j : fin 23), c (6 - j)) c + 
+dot_product (λ (j : fin 23), d (6 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₇: 
+dot_product (λ (j : fin 23), a (7 - j)) a + 
+dot_product (λ (j : fin 23), b (7 - j)) b + 
+dot_product (λ (j : fin 23), c (7 - j)) c + 
+dot_product (λ (j : fin 23), d (7 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₈: 
+dot_product (λ (j : fin 23), a (8 - j)) a + 
+dot_product (λ (j : fin 23), b (8 - j)) b + 
+dot_product (λ (j : fin 23), c (8 - j)) c + 
+dot_product (λ (j : fin 23), d (8 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₉: 
+dot_product (λ (j : fin 23), a (9 - j)) a + 
+dot_product (λ (j : fin 23), b (9 - j)) b + 
+dot_product (λ (j : fin 23), c (9 - j)) c + 
+dot_product (λ (j : fin 23), d (9 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₀: 
+dot_product (λ (j : fin 23), a (10 - j)) a + 
+dot_product (λ (j : fin 23), b (10 - j)) b + 
+dot_product (λ (j : fin 23), c (10 - j)) c + 
+dot_product (λ (j : fin 23), d (10 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₁: 
+dot_product (λ (j : fin 23), a (11 - j)) a + 
+dot_product (λ (j : fin 23), b (11 - j)) b + 
+dot_product (λ (j : fin 23), c (11 - j)) c + 
+dot_product (λ (j : fin 23), d (11 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₂: 
+dot_product (λ (j : fin 23), a (12 - j)) a + 
+dot_product (λ (j : fin 23), b (12 - j)) b + 
+dot_product (λ (j : fin 23), c (12 - j)) c + 
+dot_product (λ (j : fin 23), d (12 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₃: 
+dot_product (λ (j : fin 23), a (13 - j)) a + 
+dot_product (λ (j : fin 23), b (13 - j)) b + 
+dot_product (λ (j : fin 23), c (13 - j)) c + 
+dot_product (λ (j : fin 23), d (13 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₄: 
+dot_product (λ (j : fin 23), a (14 - j)) a + 
+dot_product (λ (j : fin 23), b (14 - j)) b + 
+dot_product (λ (j : fin 23), c (14 - j)) c + 
+dot_product (λ (j : fin 23), d (14 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₅: 
+dot_product (λ (j : fin 23), a (15 - j)) a + 
+dot_product (λ (j : fin 23), b (15 - j)) b + 
+dot_product (λ (j : fin 23), c (15 - j)) c + 
+dot_product (λ (j : fin 23), d (15 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₆: 
+dot_product (λ (j : fin 23), a (16 - j)) a + 
+dot_product (λ (j : fin 23), b (16 - j)) b + 
+dot_product (λ (j : fin 23), c (16 - j)) c + 
+dot_product (λ (j : fin 23), d (16 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₇: 
+dot_product (λ (j : fin 23), a (17 - j)) a + 
+dot_product (λ (j : fin 23), b (17 - j)) b + 
+dot_product (λ (j : fin 23), c (17 - j)) c + 
+dot_product (λ (j : fin 23), d (17 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₈: 
+dot_product (λ (j : fin 23), a (18 - j)) a + 
+dot_product (λ (j : fin 23), b (18 - j)) b + 
+dot_product (λ (j : fin 23), c (18 - j)) c + 
+dot_product (λ (j : fin 23), d (18 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₁₉: 
+dot_product (λ (j : fin 23), a (19 - j)) a + 
+dot_product (λ (j : fin 23), b (19 - j)) b + 
+dot_product (λ (j : fin 23), c (19 - j)) c + 
+dot_product (λ (j : fin 23), d (19 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₂₀: 
+dot_product (λ (j : fin 23), a (20 - j)) a + 
+dot_product (λ (j : fin 23), b (20 - j)) b + 
+dot_product (λ (j : fin 23), c (20 - j)) c + 
+dot_product (λ (j : fin 23), d (20 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₂₁: 
+dot_product (λ (j : fin 23), a (21 - j)) a + 
+dot_product (λ (j : fin 23), b (21 - j)) b + 
+dot_product (λ (j : fin 23), c (21 - j)) c + 
+dot_product (λ (j : fin 23), d (21 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₂₂: 
+dot_product (λ (j : fin 23), a (22 - j)) a + 
+dot_product (λ (j : fin 23), b (22 - j)) b + 
+dot_product (λ (j : fin 23), c (22 - j)) c + 
+dot_product (λ (j : fin 23), d (22 - j)) d = 0 :=
+by {simp only [fin_23_shift, a, b ,c ,d], norm_num}
+
+@[simp] lemma eq_aux₀: 
+dot_product (λ (j : fin 23), a (0 - j)) a + 
+dot_product (λ (j : fin 23), b (0 - j)) b + 
+dot_product (λ (j : fin 23), c (0 - j)) c + 
+dot_product (λ (j : fin 23), d (0 - j)) d = 92 :=
+by {unfold a b c d, norm_num}
+
+lemma equality : 
+A ⬝ A + B ⬝ B + C ⬝ C + D ⬝ D = (92 : ℚ) • (1 : matrix (fin 23) (fin 23) ℚ) := 
 begin
-  sorry
+  admit,
+  simp [cir_mul, cir_add, one_eq_cir, smul_cir],
+  congr' 1,
+  ext i, 
+  simp [mul_vec, cir],
+  fin_cases i,
+  exact eq_aux₀,
+  exact eq_aux₁,
+  exact eq_aux₂,
+  exact eq_aux₃,
+  exact eq_aux₄,
+  exact eq_aux₅,
+  exact eq_aux₆,
+  exact eq_aux₇,
+  exact eq_aux₈,
+  exact eq_aux₉,
+  exact eq_aux₁₀,
+  exact eq_aux₁₁,
+  exact eq_aux₁₂,
+  exact eq_aux₁₃,
+  exact eq_aux₁₄,
+  exact eq_aux₁₅,
+  exact eq_aux₁₆,
+  exact eq_aux₁₇,
+  exact eq_aux₁₈,
+  exact eq_aux₁₉,
+  exact eq_aux₂₀,
+  exact eq_aux₂₁,
+  exact eq_aux₂₂,
 end
-
-
 end H_92
 
+open H_92
+
+def H_92 := A ⊗ 1 + B ⊗ i + C ⊗ j + D ⊗ k
+
+lemma H_92.one_or_neg_one : ∀ i j, (H_92 i j) = 1 ∨ (H_92 i j) = -1 := 
+begin
+  rintros ⟨c, a⟩ ⟨d, b⟩,
+  simp [H_92, Kronecker],
+  fin_cases a,
+  any_goals {fin_cases b},
+  any_goals {norm_num [one_apply, i, j, k]},
+end
+
+lemma H_92_mul_transpose_self_is_diagonal : (H_92 ⬝ H_92ᵀ).is_diagonal :=
+begin
+  simp [H_92, K_transpose, matrix.mul_add, matrix.add_mul, K_mul, 
+  cir_mul_comm _ a, cir_mul_comm c b, cir_mul_comm d b, cir_mul_comm d c],
+  have : 
+  (cir a ⬝ cir a)⊗1 + -(cir a ⬝ cir b)⊗i + -(cir a ⬝ cir c)⊗j + -(cir a ⬝ cir d)⊗k + 
+  ((cir a ⬝ cir b)⊗i + (cir b ⬝ cir b)⊗1 + -(cir b ⬝ cir c)⊗k + (cir b ⬝ cir d)⊗j) + 
+  ((cir a ⬝ cir c)⊗j + (cir b ⬝ cir c)⊗k + (cir c ⬝ cir c)⊗1 + -(cir c ⬝ cir d)⊗i) + 
+  ((cir a ⬝ cir d)⊗k + -(cir b ⬝ cir d)⊗j + (cir c ⬝ cir d)⊗i + (cir d ⬝ cir d)⊗1) = 
+  (cir a ⬝ cir a)⊗1 + (cir b ⬝ cir b)⊗1 + (cir c ⬝ cir c)⊗1 + (cir d ⬝ cir d)⊗1 :=
+  by abel,
+  rw this, clear this,
+  simp [←add_K, equality],
+end
+
+@[instance]
+theorem Hadamard_matrix.H_92 : Hadamard_matrix H_92 :=
+⟨H_92.one_or_neg_one, mul_tranpose_is_diagonal_iff_has_orthogonal_rows.1 H_92_mul_transpose_self_is_diagonal⟩
 
 end order_92
 /- ## end order 92-/
@@ -1190,8 +1329,6 @@ end order_92
 section order
 open matrix Hadamard_matrix
 
-example : 1 = 2 := by {sorry} -- do below
-/-
 theorem Hadamard_matrix.order_constraint [decidable_eq I] (H : matrix I I ℚ) [Hadamard_matrix H] 
 : card I ≥ 3 →  4 ∣ card I := 
 begin
@@ -1202,24 +1339,42 @@ begin
   set J₃ := {j : I | H i₁ j ≠ H i₂ j ∧ H i₁ j = H i₃ j},
   set J₄ := {j : I | H i₁ j ≠ H i₂ j ∧ H i₂ j = H i₃ j},
   have d₁₂: disjoint J₁ J₂, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros, sorry},
+    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros, linarith},
   have d₁₃: disjoint J₁ J₃, 
     {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₁₄: disjoint J₁ J₄, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, sorry},
+    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₂₃: disjoint J₂ J₃, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, sorry},
+    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₂₄: disjoint J₂ J₄, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, sorry},
+    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₃₄: disjoint J₃ J₄, 
     {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, 
-    have : H i₁ x = H i₂ x, {sorry}, sorry},
-  have u₁₂: J₁.union J₂ = matched H i₁ i₂, {sorry},
-  have u₁₃: J₁.union J₃ = matched H i₁ i₃, {sorry},
-  have u₁₄: J₁.union J₄ = matched H i₂ i₃, {sorry},
-  have u₂₃: J₂.union J₃ = mismatched H i₂ i₃, {sorry},
-  have u₂₄: J₂.union J₄ = mismatched H i₁ i₃, {sorry},
-  have u₃₄: J₃.union J₄ = mismatched H i₁ i₂, {sorry},
+    have : H i₁ x = H i₂ x, {linarith}, exact c this},
+  have u₁₂: J₁.union J₂ = matched H i₁ i₂, 
+    {ext, simp [J₁, J₂, matched, set.union], tauto},
+  have u₁₃: J₁.union J₃ = matched H i₁ i₃, 
+    {ext, simp [J₁, J₃, matched, set.union], by_cases g : H i₁ x = H i₂ x; simp [g]},
+  have u₁₄: J₁.union J₄ = matched H i₂ i₃, 
+    {ext, simp [J₁, J₄, matched, set.union], tauto},
+  have u₂₃: J₂.union J₃ = mismatched H i₂ i₃, 
+    { ext, simp [J₂, J₃, mismatched, set.union], 
+      by_cases g₁ : H i₂ x = H i₃ x; simp [g₁], 
+      by_cases g₂ : H i₁ x = H i₂ x; simp [g₁, g₂],
+      exact entry_eq_entry_of (ne.symm g₂) g₁ },
+  have u₂₄: J₂.union J₄ = mismatched H i₁ i₃, 
+    { ext, simp [J₂, J₄, mismatched, set.union], 
+      by_cases g₁ : H i₁ x = H i₂ x; simp [g₁],
+      split, {rintros g₂ g₃, exact g₁ (g₃.trans g₂.symm)},
+      intros g₂, 
+      exact entry_eq_entry_of g₁ g₂ },
+  have u₃₄: J₃.union J₄ = mismatched H i₁ i₂,
+    { ext, simp [J₃, J₄, matched, set.union],
+      split; try {tauto},
+      intros g₁, 
+      by_cases g₂ : H i₁ x = H i₃ x,
+      { left, exact ⟨g₁, g₂⟩ },
+      { right, exact ⟨g₁, entry_eq_entry_of g₁ g₂⟩ } },
   have eq₁ := card_match_eq_card_mismatch_ℕ H h₁₂,
   have eq₂ := card_match_eq_card_mismatch_ℕ H h₁₃,
   have eq₃ := card_match_eq_card_mismatch_ℕ H h₂₃,
@@ -1234,22 +1389,6 @@ begin
   use J₁.card,
   simp [eq],
   noncomm_ring,
-end
--/
-
-theorem Hadamard_matrix.order_constructed_1: 
-∀ n : ℕ, ∃ (I : Type*) (inst : fintype I) 
-(H : @matrix I I inst inst ℚ) (h : @Hadamard_matrix I inst H), 
-@fintype.card I inst = 2^n := 
-begin
-  intro n,
-  induction n with n hn,
-  { refine ⟨punit, (infer_instance), H_1', Hadamard_matrix.H_1', by simp⟩ },
-  rcases hn with ⟨I, inst, H, h, hI⟩,
-  resetI,
-  refine ⟨ I ⊕ I, infer_instance, H.Sylvester_constr₀, infer_instance, _ ⟩,
-  rw [fintype.card_sum, hI],
-  ring_nf,
 end
 
 theorem Hadamard_matrix.Hadamard_conjecture: 
