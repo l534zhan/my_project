@@ -1,5 +1,4 @@
 import symmetric_matrix
-import tactic.gptf
 
 variables {α I R : Type*} [fintype I] {n : ℕ}
 
