@@ -1,4 +1,8 @@
-import tactic
+/-
+Copyright (c) 2021 Lu-Ming Zhang. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: Lu-Ming Zhang.
+-/
 import data.matrix.notation
 import matrix_basic
 

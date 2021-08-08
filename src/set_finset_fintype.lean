@@ -1,6 +1,20 @@
+/-
+Copyright (c) 2021 Lu-Ming Zhang. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: Lu-Ming Zhang.
+-/
 import tactic
 import data.finset.basic
 import data.fintype.card
+
+/-!
+This file supplements things about `set`, `finset`, `fintype`, that are current missing in mathlib.
+
+## Main definition
+
+- `set.card`: given a set `S : set I`, `S.card` is a shortcut of `S.to_finset.card`, 
+  under the conditions `[decidable_pred (λ (x : I), x ∈ S)] [fintype ↥S]`.
+-/
 
 local attribute [instance] set_fintype
 
@@ -9,16 +23,6 @@ open_locale big_operators
 namespace set
 
 variables {I : Type*} (S T U : set I) 
-
-/-
-lemma eq_self : (λ (x : I), x ∈ S) = S := rfl
-
-def decidable_pred_self [decidable_pred S] : decidable_pred (λ (x : I), x ∈ S) := 
-by {simp [set.eq_self], assumption}
-
-def decidable_pred_self' [decidable_pred (λ (x : I), x ∈ S)] : decidable_pred S := 
-by {simp [set.eq_self] at _inst_1, assumption}
--/
 
 lemma union_compl : S ∪ set.compl S = @set.univ I := by ext; simp
 
@@ -33,36 +37,16 @@ lemma disjoint_of_compl: disjoint S S.compl := by simp [set.disjoint_iff_inter_e
 
 lemma disjoint_of_compl': disjoint S (λ x, ¬ (S x)) := by simp [set.disjoint_iff_inter_eq_empty]
 
-
-/-
---variables [fintype I]  
-
-lemma coe_univ_eq_self : ↥(@set.univ I) = I := sorry
--/
-
+/-- Given a set `S : set I`, `S.card` is a shortcut of `S.to_finset.card`. -/
 def card [decidable_pred (λ (x : I), x ∈ S)] [fintype ↥S] : ℕ := S.to_finset.card 
 
 lemma univ_card_eq_fintype_card [fintype I] : (@set.univ I).card = fintype.card I := 
 by simp [card, fintype.card]
 
-/-
-lemma univ_to_finset_eq_finset_univ [fintype I] : (@set.univ I).to_finset = @finset.univ I _:=
-set.to_finset_univ
-
-@[simp] lemma coe_to_finset_eq_self [fintype ↥S] : 
-↑ S.to_finset = S := coe_to_finset S
--/
-
-#check set.to_finset_univ
-#check coe_to_finset 
-
 @[simp] lemma coe_union_to_finset
 [decidable_eq I] [fintype ↥S] [fintype ↥T] : 
 ↑(S.to_finset ∪ T.to_finset) = S ∪ T :=
 by ext; simp
-
-#check set.to_finset_union
-#check set.to_finset_inj
 
 instance union_decidable (x : I) 
 [decidable_pred (λ (x : I), x ∈ S)] [decidable_pred (λ (x : I), x ∈ T)] : 
@@ -80,12 +64,6 @@ lemma to_finset_union_eq_iff [decidable_eq I]
 [fintype ↥S] [fintype ↥T] [fintype ↥U] : 
 S.to_finset ∪ T.to_finset = U.to_finset ↔ S ∪ T = U :=
 by simp [←to_finset_union, set.to_finset_inj]
-
-#check finset.card_disjoint_union
-
-#check set.to_finset_disjoint_iff
-
-#check finset.disjoint_iff_disjoint_coe
 
 lemma card_disjoint_union [decidable_eq I] 
 [decidable_pred (λ (x : I), x ∈ S)] [fintype ↥S]
@@ -109,18 +87,6 @@ begin
   congr,
   rw u,
 end
-
-/-
-instance union_fintype 
-[decidable_pred (λ (x : I), x ∈ S)] [decidable_pred (λ (x : I), x ∈ T)] : 
-fintype (S.union T) := set_fintype (set.union S T)
-
-instance union_decidable_pred' 
-[decidable_pred (λ (x : I), x ∈ S)] [decidable_pred (λ (x : I), x ∈ T)] 
-(u : S ∪ T = U) : 
-decidable_pred (λ (x : I), x ∈ U) := 
-by {have h: decidable_pred (λ (x : I), x ∈ (S ∪ T)), {apply_instance}, rw u at h, assumption}
--/
 
 end set
 

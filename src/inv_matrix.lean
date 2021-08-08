@@ -1,5 +1,15 @@
 /-
+Copyright (c) 2021 Lu-Ming Zhang. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: Lu-Ming Zhang.
+-/
+
+/-
 import linear_algebra.matrix.nonsingular_inverse
+
+/-!
+This file supplements things about matrix inverse, that were missing in mathlib.
+-/
 
 namespace matrix
 universes u v

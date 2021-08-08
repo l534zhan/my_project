@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2021 Lu-Ming Zhang. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: Lu-Ming Zhang.
+-/
 import tactic
 import tactic.gptf
 import data.fintype.card
@@ -670,30 +675,13 @@ variables {F}
 lemma is_sym_of (h : q ≡ 1 [MOD 4]) : 
 (Jacobsthal_matrix F).is_sym := 
 begin
-  rw [eq_cir, cir_is_sym_ext_iff],
-  exact quad_char_is_sym_of h
+  rw [eq_cir, cir_is_sym_ext_iff'],
+  exact quad_char_is_sym_of' h
 end
-
-lemma is_sym_of' (h : card F ≡ 1 [MOD 4]) : 
-(Jacobsthal_matrix F)ᵀ = Jacobsthal_matrix F := is_sym_of h
 
 lemma is_skewsym_of (h : q ≡ 3 [MOD 4]) : 
 (Jacobsthal_matrix F).is_skewsym := 
-begin
-  obtain ⟨p, inst⟩ := char_p.exists F,
-  resetI,
-  obtain ⟨hp, h'⟩ := char_ne_two' p h,
-  ext,
-  simp [Jacobsthal_matrix],
-  have g: ¬ ∃ (a : F), -1 = a ^ 2, 
-  { intro g, 
-    rw @neg_one_eq_sq_iff_card_eq_one_mod_four _ _ _ _ inst hp at g, 
-    exact absurd g h' },
-  have := quad_char_eq_neg_one_of (by simp) g,
-  rw [← neg_one_mul (χ (i - j)), ← this, ← quad_char_mul hp],
-  congr, ring,
-  assumption
-end
+by ext; simp [Jacobsthal_matrix, quad_char_is_skewsym_of' h i j]
 
 lemma is_skesym_of' (h : q ≡ 3 [MOD 4]) : 
 (Jacobsthal_matrix F)ᵀ = - (Jacobsthal_matrix F) := 
