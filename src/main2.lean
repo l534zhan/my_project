@@ -3,16 +3,32 @@ Copyright (c) 2021 Lu-Ming Zhang. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: Lu-Ming Zhang.
 -/
-import tactic
 import tactic.gptf
-import data.fintype.card
-import data.finset.basic
-import algebra.big_operators
-import linear_algebra.char_poly.basic
-
 import finite_field
 import circulant_matrix
 import diagonal_matrix
+
+/-!
+# Hadamard product and Kronecker product.
+
+This file defines the Hadamard matrices `matrix.Hadamard_matrix` as a type class, 
+and implements Sylvester's constructions and Payley's constructions of Hadamard matrices and a Hadamard matrix of order 92.
+In particular, this files implements at least one Hadamrd matrix of oder `n` for every possible `n ≤ 100`.
+
+## References
+
+*  <https://en.wikipedia.org/wiki/Hadamard_matrix>
+*  <https://en.wikipedia.org/wiki/Paley_construction>
+
+* <https://www.sciencedirect.com/science/article/pii/S0924650908705270>
+* <https://www.semanticscholar.org/paper/Discovery-of-an-Hadamard-matrix-of-order-92-Baumert-Golomb/025332f57b1aca0f29313cf0abca8ec3cccb1084>
+  (the construction of a Hadamard matrix of oder 92)
+  
+
+## Tags
+
+Hadamard matrix, Hadamard
+-/
 
 --attribute [to_additive] fintype.prod_dite
 --local attribute [-instance] set.has_coe_to_sort
@@ -41,7 +57,8 @@ by by_cases p; simp* at *
 ite (x = a) (f a) (f x)= f x :=
 by by_cases x=a; simp* at *
 
-private lemma pick_elements (h : fintype.card I ≥ 3) : -- give citation
+-- The original proof is due to Eric Wieser, given in <https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/topic/card>.
+private lemma pick_elements (h : fintype.card I ≥ 3) : 
 ∃ i j k : I, i ≠ j ∧ i ≠ k ∧ j ≠ k := 
 begin
   set n := fintype.card I with hn,

@@ -6,6 +6,37 @@ Author: Lu-Ming Zhang.
 import data.matrix.notation
 import matrix_basic
 
+/-!
+# Hadamard product and Kronecker product.
+
+This file defines the Hadamard product `matrix.Hadamard` and the Kronecker product `matrix.Kronecker` and
+contains basic properties about them.
+
+## Main definitions
+
+- `matrix.Hadamard`: defines the Hadamard product, which is the pointwise product of two matrices of the same size.
+- `matrix.Kronecker`: defines the Kronecker product, denoted by `⊗`. 
+  For `A : matrix I J α` and `B : matrix K L α`, `A ⊗ B ⟨a, b⟩ ⟨c, d⟩` is defined to be ` (A a c) * (B b d)`.
+- `matrix.fin_Kronecker`: the `fin` version of `matrix.Kronecker`, denoted by `⊗ₖ`.
+  For `A : matrix (fin m) (fin n) α` and `B : matrix (fin p) (fin q) α`, `A ⊗ₖ B` is of type `matrix (fin (m * p)) (fin (n * q))`.
+  The difference from `A ⊗ B` is that each of the index types `fin (m * p)` and `fin (n * q)` of the resulting matrix has a natural order.
+
+## Notation
+
+* `⊙`: the Hadamard product `matrix.Hadamard`;
+* `⊗`: the Kronecker product `matrix.Kronecker`;
+* `⊗ₖ`: the Kronecker product `fin_Kronecker` of matrices with index types `fin _`.
+
+## References
+
+*  <https://en.wikipedia.org/wiki/Hadamard_product_(matrices)>
+*  <https://en.wikipedia.org/wiki/Kronecker_product>
+
+## Tags
+
+Hadamard product, Kronecker product, Hadamard, Kronecker
+-/
+
 variables {α β γ I J K L M N: Type*}
 variables {R : Type*}
 variables {m n p q r s t: ℕ}
@@ -73,10 +104,6 @@ end zero
 section trace
 open_locale matrix
 variables [comm_semiring α] [decidable_eq I] [decidable_eq J]
-
-@[simp] private lemma conj_ite {p : Prop} {z₁ z₂ : ℂ} [decidable p] :
-conj (ite p z₁ z₂) = ite p (conj z₁) (conj z₂) :=
-apply_ite ⇑conj p z₁ z₂
 
 lemma tr_identity (v : I → α) (w : J → α) (M₁ : matrix I J α) (M₂ : matrix I J α):
 dot_product (vec_mul  v  (M₁ ⊙ M₂)) w =
@@ -167,7 +194,7 @@ localized "infix `⊗`:100 := matrix.Kronecker" in matrix
 /- ## fin_Kronecker_prodcut  -/
 
 @[elab_as_eliminator]
-def fin_Kronecker_prodcut [has_mul α]
+def fin_Kronecker [has_mul α]
 (A : matrix (fin m) (fin n) α) (B : matrix (fin p) (fin q) α)
 : matrix (fin (m * p)) (fin (n * q)) α :=
 λ i j,
@@ -177,7 +204,7 @@ A ⟨(i / p), by {have h:= i.2, simp [mul_comm m] at *, apply nat.div_lt_of_lt_m
 B ⟨(i % p), by {cases p, linarith [i.2], apply nat.mod_lt _ (nat.succ_pos _)}⟩
   ⟨(j % q), by {cases q, linarith [j.2], apply nat.mod_lt _ (nat.succ_pos _)}⟩ 
 
-localized "infix `⊗ₖ`:100 := matrix.fin_Kronecker_prodcut" in matrix
+localized "infix `⊗ₖ`:100 := matrix.fin_Kronecker" in matrix
 
 section notations
 def matrix_empty : matrix (fin 0) (fin 0) α := λ x, ![]
