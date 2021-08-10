@@ -13,13 +13,13 @@ import diagonal_matrix
 
 This file defines the Hadamard matrices `matrix.Hadamard_matrix` as a type class, 
 and implements Sylvester's constructions and Payley's constructions of Hadamard matrices and a Hadamard matrix of order 92.
-In particular, this files implements at least one Hadamrd matrix of oder `n` for every possible `n ≤ 100`.
+In particular, this files implements at least one Hadamard matrix of oder `n` for every possible `n ≤ 100`.
 
 ## References
 
 *  <https://en.wikipedia.org/wiki/Hadamard_matrix>
 *  <https://en.wikipedia.org/wiki/Paley_construction>
-* [F.J. MacWilliams, *2 Nonlinear codes, Hadarnard matrices, designs and the Golay code*][macwilliams1977]
+* [F.J. MacWilliams, *2 Nonlinear codes, Hadamard matrices, designs and the Golay code*][macwilliams1977]
 * [L. D. Baumert, *Discovery of an Hadamard matrix of order 92*][baumert1962]
   
 
