@@ -13,13 +13,13 @@ import diagonal_matrix
 
 This file defines the Hadamard matrices `matrix.Hadamard_matrix` as a type class, 
 and implements Sylvester's constructions and Payley's constructions of Hadamard matrices and a Hadamard matrix of order 92.
-In particular, this files implements at least one Hadamrd matrix of oder `n` for every possible `n ≤ 100`.
+In particular, this files implements at least one Hadamard matrix of oder `n` for every possible `n ≤ 100`.
 
 ## References
 
 *  <https://en.wikipedia.org/wiki/Hadamard_matrix>
 *  <https://en.wikipedia.org/wiki/Paley_construction>
-* [F.J. MacWilliams, *2 Nonlinear codes, Hadarnard matrices, designs and the Golay code*][macwilliams1977]
+* [F.J. MacWilliams, *2 Nonlinear codes, Hadamard matrices, designs and the Golay code*][macwilliams1977]
 * [L. D. Baumert, *Discovery of an Hadamard matrix of order 92*][baumert1962]
   
 
@@ -103,8 +103,6 @@ lemma dot_product_split_over_subtypes {R} [semiring R]
 dot_product v w =
 ∑ j : {j : I // p j}, v j * w j + ∑ j : {j : I // ¬ (p j)}, v j * w j :=
 by { simp [dot_product], rw fintype.sum_split p}
-
-def reindex_square (f : I ≃ J) := @reindex _ _ _ _ _ _ _ _ α f f
 
 end matrix_pre
 
@@ -215,7 +213,7 @@ begin
 end
 
 variables (H)
-@[simp] lemma entry_mul_of_mismatch {i j k l : I} (h : H i j ≠ H k l):
+@[simp] lemma entry_mul_of_ne {i j k l : I} (h : H i j ≠ H k l):
 (H i j) * (H k l) = -1 :=
 by {rcases one_or_neg_one H i j; 
     simp [*, entry_eq_one_of h, entry_eq_neg_one_of h] at *,}
@@ -331,14 +329,13 @@ lemma card_match_eq_card_mismatch_ℕ [decidable_eq I] {i₁ i₂ : I} (h: i₁ 
 set.card (matched H i₁ i₂) = set.card (mismatched H i₁ i₂) :=
 by have h := card_match_eq_card_mismatch_ℚ H h; simp * at *
 
-lemma reindex (f : I ≃ J) : Hadamard_matrix (reindex_square f H) :=
+lemma reindex (f : I ≃ J) (g : I ≃ J): Hadamard_matrix (reindex f g H) :=
 begin
-  simp [reindex_square],
   refine {..},
   { simp [minor_apply] },
   intros i₁ i₂ h,
   simp [dot_product, minor_apply],
-  rw [fintype.sum_equiv (f.symm) _ (λ x, H (f.symm i₁) x * H (f.symm i₂) x) (λ x, rfl)],
+  rw [fintype.sum_equiv (g.symm) _ (λ x, H (f.symm i₁) x * H (f.symm i₂) x) (λ x, rfl)],
   have h' : f.symm i₁ ≠ f.symm i₂, {simp [h]},
   simp [h']
 end
@@ -361,16 +358,16 @@ def H_1' : matrix punit punit ℚ := λ i j, 1
 def H_2 : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ := 
 (1 :matrix unit unit ℚ).from_blocks 1 1 (-1)
 
-lemma Hadamard_matrix.H_0 : Hadamard_matrix H_0 :=
+instance Hadamard_matrix.H_0 : Hadamard_matrix H_0 :=
 ⟨by tidy, by tidy⟩
 
-lemma Hadamard_matrix.H_1 : Hadamard_matrix H_1 := 
+instance Hadamard_matrix.H_1 : Hadamard_matrix H_1 := 
 ⟨by tidy, by tidy⟩
 
-lemma Hadamard_matrix.H_1' : Hadamard_matrix H_1' := 
+instance Hadamard_matrix.H_1' : Hadamard_matrix H_1' := 
 ⟨by tidy, by tidy⟩
 
-lemma Hadamard_matrix.H_2 : Hadamard_matrix H_2 := 
+instance Hadamard_matrix.H_2 : Hadamard_matrix H_2 := 
 ⟨ by tidy, 
   λ i₁ i₂ h, by { cases i₁, any_goals {cases i₂}, 
                   any_goals {simp[*, H_2, dot_product, fintype.sum_sum_type] at *} }
@@ -384,40 +381,102 @@ section normalize
 
 open matrix Hadamard_matrix
 
+/-- negate row `i` of matrix `A`; `[decidable_eq I]` is required for `update_row` -/
+def neg_row [has_neg α] [decidable_eq I] (A : matrix I J α) (i : I) := 
+update_row A i (- A i)
+
+/-- negate column `j` of matrix `A`; `[decidable_eq J]` is required for `update_column` -/
+def neg_col [has_neg α] [decidable_eq J] (A : matrix I J α) (j : J) := 
+update_column A j (-λ i, A i j)
+
+section neg
+
+/-- Negating row `i` and then column `j` equals negating column `j` first and then row `i`. -/
+lemma neg_row_neg_col_comm [has_neg α] [decidable_eq I] [decidable_eq J]
+(A : matrix I J α) (i : I) (j : J) :
+(A.neg_row i).neg_col j = (A.neg_col j).neg_row i :=
+begin
+  ext a b,
+  simp [neg_row, neg_col, update_column_apply, update_row_apply],
+  by_cases a = i,
+  any_goals {by_cases b = j},
+  any_goals {simp* at *},
+end
+
+lemma transpose_neg_row [has_neg α] [decidable_eq I] (A : matrix I J α) (i : I) :
+(A.neg_row i)ᵀ = Aᵀ.neg_col i :=
+by simp [← update_column_transpose, neg_row, neg_col]
+
+lemma transpose_neg_col [has_neg α] [decidable_eq J] (A : matrix I J α) (j : J) :
+(A.neg_col j)ᵀ = Aᵀ.neg_row j :=
+by {simp [← update_row_transpose, neg_row, neg_col, trans_row_eq_col]}
+
+lemma neg_row_add [add_comm_group α] [decidable_eq I] 
+(A B : matrix I J α) (i : I) :
+(A.neg_row i) + (B.neg_row i) = (A + B).neg_row i :=
+begin
+  ext a b,
+  simp [neg_row, neg_col, update_column_apply, update_row_apply],
+  by_cases a = i,
+  any_goals {simp* at *},
+  abel
+end
+
+lemma neg_col_add [add_comm_group α] [decidable_eq J] 
+(A B : matrix I J α) (j : J) :
+(A.neg_col j) + (B.neg_col j) = (A + B).neg_col j :=
+begin
+  ext a b,
+  simp [neg_row, neg_col, update_column_apply, update_row_apply],
+  by_cases b = j,
+  any_goals {simp* at *},
+  abel
+end
+
+/-- Negating the same row and column of diagonal matrix `A` equals `A` itself. -/
+lemma neg_row_neg_col_eq_self_of_is_diag [add_group α] [decidable_eq I]
+{A : matrix I I α} (h : A.is_diagonal) (i : I) :
+(A.neg_row i).neg_col i = A :=
+begin
+  ext a b,
+  simp [neg_row, neg_col, update_column_apply, update_row_apply],
+  by_cases h₁ : a = i,
+  any_goals {by_cases h₂ : b = i},
+  any_goals {simp* at *},
+  { simp [h.apply_ne' h₂] },
+  { simp [h.apply_ne h₁] },
+end 
+
+end neg
+
 variables [decidable_eq I] (H : matrix I I ℚ) [Hadamard_matrix H] 
 
-def neg_one_smul_row (i : I) := update_row H i (- H i)
-
-def neg_one_smul_col (j : I) := update_column H j (-λ i, H i j)
-
-instance Hadamard_matrix.neg_one_smul_row (i : I) : 
-Hadamard_matrix (H.neg_one_smul_row i) := 
+instance Hadamard_matrix.neg_row (i : I) : 
+Hadamard_matrix (H.neg_row i) := 
 begin
   refine {..},
   { intros j k,
-    simp [neg_one_smul_row,  update_row_apply],
-    by_cases j = i;
-    simp[*, one_or_neg_one H i j] at *,
+    simp [neg_row,  update_row_apply],
+    by_cases j = i; simp* at *,
   },
   { intros j k hjk,
     by_cases h1 : j = i, any_goals {by_cases h2 : k = i},
-    any_goals {simp [*, neg_one_smul_row, update_row_apply]},
+    any_goals {simp [*, neg_row, update_row_apply]},
     have h':= (rfl.congr (eq.symm h2)).mp h1,
     contradiction
   }
 end
 
-instance Hadamard_matrix.neg_one_smul_col (i : I) : 
-Hadamard_matrix (H.neg_one_smul_col i) := 
+instance Hadamard_matrix.neg_col (i : I) : 
+Hadamard_matrix (H.neg_col i) := 
 begin
   refine {..},
   { intros j k,
-    simp [neg_one_smul_col,  update_column_apply],
-    by_cases k = i;
-    simp[*, one_or_neg_one H i j] at *,
+    simp [neg_col,  update_column_apply],
+    by_cases k = i; simp* at *,
   },
   { intros j k hjk,
-    simp [*, neg_one_smul_col, dot_product, update_column_apply],
+    simp [*, neg_col, dot_product, update_column_apply],
     simp [apply_ite has_neg.neg],
     rw ← dot_product,
     simp *,  
@@ -445,47 +504,42 @@ def is_regular : Prop :=
 
 variable {H}
 
-@[simp] lemma is_skew_apply_diag 
+lemma is_skew.eq [decidable_eq I] (h : is_skew H) :
+Hᵀ + H = 2 := h
+
+@[simp] lemma is_skew.apply_eq 
 [decidable_eq I] (h : is_skew H) (i : I) :
 H i i + H i i = 2 :=
 by replace h:= congr_fun (congr_fun h i) i; simp * at *
 
-@[simp] lemma is_skew_apply_non_diag 
+@[simp] lemma is_skew.apply_ne 
 [decidable_eq I] (h : is_skew H) {i j : I} (hij : i ≠ j) :
 H j i + H i j = 0 :=
 by replace h:= congr_fun (congr_fun h i) j; simp * at *
 
-lemma is_skew_of_neg_one_smul_row_col_of_is_skew 
+lemma is_skew.of_neg_one_smul_row_col_of_is_skew 
 [decidable_eq I] (i : I) (h : Hadamard_matrix.is_skew H) : 
-is_skew ((H.neg_one_smul_row i).neg_one_smul_col i) :=
+is_skew ((H.neg_row i).neg_col i) :=
 begin
-  simp [is_skew, neg_one_smul_row, neg_one_smul_col],
-  ext j k,
-  simp [dmatrix.add_apply, update_column_apply, update_row_apply, bit0],
-  by_cases g₁ : j = i,
-  any_goals {by_cases g₂ : k = i},
-  any_goals {simp [*, one_apply]},
-  { ring },
-  { simp [ne.symm g₂], rw [← neg_add, is_skew_apply_non_diag h (ne.symm g₂)], ring },
-  { rw [← neg_add, is_skew_apply_non_diag h g₁], ring },
-  { by_cases g₃ : j = k, any_goals {simp*}, ring }
+  simp [is_skew],
+  nth_rewrite 0 [neg_row_neg_col_comm],
+  simp [transpose_neg_row, transpose_neg_col, neg_row_add, neg_col_add],
+  rw [h.eq],
+  convert neg_row_neg_col_eq_self_of_is_diag _ _,
+  apply is_diagonal_add; by simp
 end
+
 
 end Hadamard_matrix
 
 end special_cases
 /- ## end special cases -/
 
-
 /- ## Sylvester construction  -/
 section Sylvester_constr
 
 def Sylvester_constr₀ (H : matrix I I ℚ) [Hadamard_matrix H] : matrix (I ⊕ I) (I ⊕ I) ℚ := 
 H.from_blocks H H (-H)
-
-def Sylvester_constr₀' (H : matrix I I ℚ) [Hadamard_matrix H] : 
-matrix (I × (unit ⊕ unit)) (I × (unit ⊕ unit)) ℚ := 
-H ⊗ H_2
 
 @[instance]
 theorem Hadamard_matrix.Sylvester_constr₀ (H : matrix I I ℚ) [Hadamard_matrix H] :
@@ -499,14 +553,18 @@ begin
   any_goals {rw [← dot_product], have h' : i ≠ j; simp* at *}
 end
 
-local notation `redindex` := equiv.sum_self_equiv_prod_unit_sum_unit
+def Sylvester_constr₀' (H : matrix I I ℚ) [Hadamard_matrix H]: 
+matrix (I × (unit ⊕ unit)) (I × (unit ⊕ unit)) ℚ := 
+H ⊗ H_2
+
+local notation `reindex_map` := equiv.sum_self_equiv_prod_unit_sum_unit
 
 lemma Sylvester_constr₀'_eq_reindex_Sylvester_constr₀ 
 (H : matrix I I ℚ) [Hadamard_matrix H] : 
-H.Sylvester_constr₀' = (reindex_square redindex) H.Sylvester_constr₀ :=
+H.Sylvester_constr₀' = reindex reindex_map reindex_map H.Sylvester_constr₀:=
 begin
   ext ⟨i, a⟩ ⟨j, b⟩,
-  simp [reindex_square, Sylvester_constr₀', Sylvester_constr₀, Kronecker, H_2, from_blocks],
+  simp [Sylvester_constr₀', Sylvester_constr₀, Kronecker, H_2, from_blocks],
   rcases a with (a | a),
   any_goals {rcases b with (b | b)},
   any_goals {simp [one_apply]},
@@ -516,8 +574,7 @@ end
 theorem Hadamard_matrix.Sylvester_constr₀' (H : matrix I I ℚ) [Hadamard_matrix H] :
 Hadamard_matrix (Sylvester_constr₀' H) := 
 begin
-  have inst := Hadamard_matrix.Sylvester_constr₀ H, resetI,
-  convert Hadamard_matrix.reindex H.Sylvester_constr₀ redindex,
+  convert Hadamard_matrix.reindex H.Sylvester_constr₀ reindex_map reindex_map,
   exact H.Sylvester_constr₀'_eq_reindex_Sylvester_constr₀,
 end
 
@@ -528,12 +585,12 @@ theorem Hadamard_matrix.order_conclusion_1:
 begin
   intro n,
   induction n with n hn,
+  -- the case 0
   { refine ⟨punit, (infer_instance), H_1', Hadamard_matrix.H_1', by simp⟩ },
-  rcases hn with ⟨I, inst, H, h, hI⟩,
-  resetI,
+  -- the case n.succ
+  rcases hn with ⟨I, inst, H, h, hI⟩, resetI,
   refine ⟨ I ⊕ I, infer_instance, H.Sylvester_constr₀, infer_instance, _ ⟩,
-  rw [fintype.card_sum, hI],
-  ring_nf,
+  rw [fintype.card_sum, hI], ring_nf,
 end
 
 end Sylvester_constr
@@ -946,7 +1003,7 @@ end
 end Paley_construction
 /- ## end Paley construction -/
 
-
+/-
 /- ## order 92-/
 section order_92
 
@@ -1297,6 +1354,7 @@ theorem Hadamard_matrix.H_92 : Hadamard_matrix H_92 :=
 
 end order_92
 /- ## end order 92-/
+-/
 
 /- ## order -/
 section order
@@ -1374,6 +1432,7 @@ end order
 
 end Hadamard_matrix
 /- ## end Hadamard_matrix  -/
+
 
 end matrix
 
