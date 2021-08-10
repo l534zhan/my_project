@@ -19,10 +19,8 @@ In particular, this files implements at least one Hadamrd matrix of oder `n` for
 
 *  <https://en.wikipedia.org/wiki/Hadamard_matrix>
 *  <https://en.wikipedia.org/wiki/Paley_construction>
-
-* <https://www.sciencedirect.com/science/article/pii/S0924650908705270>
-* <https://www.semanticscholar.org/paper/Discovery-of-an-Hadamard-matrix-of-order-92-Baumert-Golomb/025332f57b1aca0f29313cf0abca8ec3cccb1084>
-  (the construction of a Hadamard matrix of oder 92)
+* [F.J. MacWilliams, *2 Nonlinear codes, Hadarnard matrices, designs and the Golay code*][macwilliams1977]
+* [L. D. Baumert, *Discovery of an Hadamard matrix of order 92*][baumert1962]
   
 
 ## Tags
@@ -132,22 +130,6 @@ def matched (H : matrix I I ℚ) (i₁ i₂ : I) : set I :=
 def mismatched (H : matrix I I ℚ) (i₁ i₂ : I) : set I := 
 {j : I | H i₁ j ≠ H i₂ j}
 
-lemma matched_is_finite (H : matrix I I ℚ) (i₁ i₂ : I) : (matched H i₁ i₂).finite :=
-set.finite.of_fintype (matched H i₁ i₂)
-
-lemma mismatched_is_finite (H : matrix I I ℚ) (i₁ i₂ : I) : (mismatched H i₁ i₂).finite :=
-set.finite.of_fintype (mismatched H i₁ i₂)
-
-example (H : matrix I I ℚ) (i₁ i₂ : I) : fintype (matched H i₁ i₂) := subtype.fintype (λ (x : I), x ∈ matched H i₁ i₂)
-
-@[reducible, simp]
-def matcheded_finset (H : matrix I I ℚ) (i₁ i₂ : I) : finset I := 
-set.to_finset (matched H i₁ i₂)
-
-@[reducible, simp]
-def mismatcheded_finset (H : matrix I I ℚ) (i₁ i₂ : I) : finset I := 
-set.to_finset (mismatched H i₁ i₂)
-
 section set
 
 @[simp] lemma match_union_mismatch (H : matrix I I ℚ) (i₁ i₂ : I) :
@@ -195,7 +177,6 @@ section properties
 namespace Hadamard_matrix
 
 variables (H : matrix I I ℚ) [Hadamard_matrix H]
-variables (H' : matrix (fin n) (fin n) ℚ) [Hadamard_matrix H']
 
 attribute [simp] one_or_neg_one
 
@@ -234,7 +215,7 @@ begin
 end
 
 variables (H)
-@[simp] lemma entry_mul_mismatch {i j k l : I} (h : H i j ≠ H k l):
+@[simp] lemma entry_mul_of_mismatch {i j k l : I} (h : H i j ≠ H k l):
 (H i j) * (H k l) = -1 :=
 by {rcases one_or_neg_one H i j; 
     simp [*, entry_eq_one_of h, entry_eq_neg_one_of h] at *,}
@@ -257,8 +238,8 @@ dot_product (H i₁) (H i₂)= 0 := by simp [ne.symm h]
 lemma mul_tanspose [decidable_eq I] :
 H ⬝ Hᵀ = (card I : ℚ) • 1 :=
 begin
-  ext, have : int.one = 1, {refl},
-  simp [transpose, matrix.mul, diagonal],
+  ext,
+  simp [transpose, matrix.mul],
   by_cases i = j; simp [*, mul_one] at *,
 end
 
@@ -269,22 +250,17 @@ calc (det H)^2 = (det H) * (det H) : by ring
            ... = det ((card I : ℚ) • (1 : matrix I I ℚ)) : by rw mul_tanspose
            ... = (card I : ℚ)^(card I) : by simp
 
-lemma mul_tanspose': H' ⬝ H'ᵀ = (n : ℚ) • 1 :=
-by simp [mul_tanspose]
-
 lemma right_invertible [decidable_eq I] : 
 H ⬝ ((1 / (card I : ℚ)) • Hᵀ) = 1 :=
 begin
   have h := mul_tanspose H,
   by_cases hI : card I = 0,
-  {exact @eq_of_empty _ _ _ (card_eq_zero_iff.mp hI) _ _}, --trivial case 
-  have h':= congr_arg (has_scalar.smul (1 / (card I : ℚ))) h,
-  have hI': (card I : ℚ) ≠ 0, {exact nat.cast_ne_zero.mpr hI},
-  have aux : (1 / (card I : ℚ)) • ↑(card I) = (1 : ℚ), {simp* at *},
-  rwa [←smul_assoc, aux, ←mul_smul, one_smul] at h',
+  {exact @eq_of_empty _ _ _ (card_eq_zero_iff.mp hI) _ _}, -- the trivial case 
+  have hI': (card I : ℚ) ≠ 0, {simp [hI]},
+  simp [h, hI'],
 end
 
-lemma invertible [decidable_eq I] : invertible H :=
+def invertible [decidable_eq I] : invertible H :=
 invertible_of_right_inverse (Hadamard_matrix.right_invertible _)
 
 lemma nonsing_inv_eq [decidable_eq I] : H⁻¹ = (1 / (card I : ℚ)) • Hᵀ :=
@@ -319,7 +295,6 @@ begin
          = ∑ (x : I) in {j : I | H i₁ j = H i₂ j}.to_finset, 1,
   { apply finset.sum_congr rfl, 
     rintros j hj, 
-    have hj': H i₁ j = H i₂ j, {simp* at *},
     simp* at * },
   rw [h, ← finset.card_eq_sum_ones_ℚ],
   congr,
@@ -331,10 +306,7 @@ begin
   simp [mismatched],
   have h : ∑ (x : I) in {j : I | H i₁ j ≠ H i₂ j}.to_finset, H i₁ x * H i₂ x 
          = ∑ (x : I) in {j : I | H i₁ j ≠ H i₂ j}.to_finset, -1,
-  { apply finset.sum_congr rfl, 
-    rintros j hj, 
-    have hj': H i₁ j ≠ H i₂ j, {simp* at *},
-    simp* at * },
+  { apply finset.sum_congr rfl, rintros j hj, simp* at * },
   have h' : ∑ (x : I) in {j : I | H i₁ j ≠ H i₂ j}.to_finset, - (1 : ℚ)
           = - ∑ (x : I) in {j : I | H i₁ j ≠ H i₂ j}.to_finset, (1 : ℚ),
   { simp },
@@ -357,10 +329,7 @@ end
 
 lemma card_match_eq_card_mismatch_ℕ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 set.card (matched H i₁ i₂) = set.card (mismatched H i₁ i₂) :=
-begin
-  have h := card_match_eq_card_mismatch_ℚ H h,
-  simp * at *,
-end
+by have h := card_match_eq_card_mismatch_ℚ H h; simp * at *
 
 lemma reindex (f : I ≃ J) : Hadamard_matrix (reindex_square f H) :=
 begin
@@ -389,7 +358,7 @@ def H_1 : matrix unit unit ℚ := 1
 
 def H_1' : matrix punit punit ℚ := λ i j, 1
 
-def H_2 : matrix (unit ⊕unit) (unit ⊕unit) ℚ := 
+def H_2 : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ := 
 (1 :matrix unit unit ℚ).from_blocks 1 1 (-1)
 
 lemma Hadamard_matrix.H_0 : Hadamard_matrix H_0 :=
