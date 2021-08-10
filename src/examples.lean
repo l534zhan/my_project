@@ -7,4 +7,10 @@ open matrix
 
 example : 1 = 2 := by sorry 
 
+#check H_1
+#check H_1'
+#check matrix
+#check unit
+#check punit --universe polymorphic version
+
 

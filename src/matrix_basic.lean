@@ -145,12 +145,13 @@ section conjugate_transpose
 
 @[simp] lemma star_vec [has_star α] (v : I → α) (i : I) : star v i = star (v i) := rfl
 
-/-
 lemma trans_col_eq_row (A : matrix I J α) (i : I) : (λ j, Aᵀ j i) = A i :=
 by simp [transpose]
 
 lemma trans_row_eq_col (A : matrix I J α) (j : J) : Aᵀ j = (λ i, A i j):=
 by ext; simp [transpose]
+
+/-
 
 /-- The conjugate transpose of a matrix defined in term of `star`. -/
 def conj_transpose [has_star α] (M : matrix I J α) : matrix J I α
