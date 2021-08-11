@@ -185,10 +185,19 @@ open_locale matrix
 
 @[elab_as_eliminator]
 def Kronecker [has_mul α] (A : matrix I J α) (B : matrix K L α) :
-matrix (I × K)  (J × L) α :=
+matrix (I × K) (J × L) α :=
 λ ⟨i, k⟩ ⟨j, l⟩, (A i j) * (B k l)
 
 localized "infix `⊗`:100 := matrix.Kronecker" in matrix
+
+lemma Kronecker_apply [has_mul α] 
+(A : matrix I J α) (B : matrix K L α) (a : I × K) (b : J × L) :
+(A ⊗ B) a b = (A a.1 b.1) * (B a.2 b.2) := 
+begin
+  have ha : a = ⟨a.1, a.2⟩ := by {ext; simp},
+  have hb : b = ⟨b.1, b.2⟩ := by {ext; simp},
+  rw [ha, hb], dsimp [Kronecker], refl
+end
 
 /- The advantage of the following def is that one can directly #eval the Kronecker product of specific matrices-/
 /- ## fin_Kronecker_prodcut  -/
@@ -451,6 +460,34 @@ end det
 -/
 
 end Kronecker_product
+
+open_locale matrix
+
+section dot_product
+
+lemma dot_product_Kronecker_row [has_mul α] [add_comm_monoid α]
+(A : matrix I K α) (B : matrix J L α) (a b : I × J):
+dot_product ((A ⊗ B) a) ((A ⊗ B) b) = 
+∑ (k : K) (l : L), (A a.1 k * B a.2 l) * (A b.1 k * B b.2 l) := 
+by simp [dot_product, ←finset.univ_product_univ, finset.sum_product, Kronecker_apply]
+
+lemma dot_product_Kronecker_row' [comm_semiring α] 
+(A : matrix I K α) (B : matrix J L α) (a b : I × J):
+dot_product ((A ⊗ B) a) ((A ⊗ B) b) = 
+(∑ (k : K), (A a.1 k * A b.1 k)) * ∑ (l : L), (B a.2 l * B b.2 l) :=
+begin
+simp [dot_product_Kronecker_row, finset.mul_sum, finset.sum_mul],
+repeat {apply finset.sum_congr rfl, intros _ _},
+ring
+end
+
+lemma dot_product_Kronecker_row_split [comm_semiring α] 
+(A : matrix I K α) (B : matrix J L α) (a b : I × J):
+dot_product ((A ⊗ B) a) ((A ⊗ B) b) = 
+(dot_product (A a.1)  (A b.1)) * (dot_product (B a.2) (B b.2)) :=
+by rw [dot_product_Kronecker_row', dot_product, dot_product]
+
+end dot_product
 /- ## end Kronecker product  -/
 
 end matrix

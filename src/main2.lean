@@ -273,7 +273,7 @@ begin
   simp* at *,
 end
 
--- We are now able to prove:
+/-- The dot product of a column with another column equals `0`. -/
 @[simp] lemma col_dot_product_other [decidable_eq I] {j₁ j₂ : I} (h : j₁ ≠ j₂) :
 dot_product (λ i, H i j₁) (λ i, H i j₂) = 0 :=
 begin
@@ -282,8 +282,27 @@ begin
   assumption,
 end
 
+/-- The dot product of a column with another column equals `0`. -/
 @[simp] lemma col_dot_product_other' [decidable_eq I] {j₁ j₂ : I} (h : j₂ ≠ j₁) :
 dot_product (λ i, H i j₁) (λ i, H i j₂)= 0 := by simp [ne.symm h]
+
+/-- Hadamard matrix `H` has orthogonal rows-/
+@[simp] lemma has_orthogonal_cols [decidable_eq I] :
+H.has_orthogonal_cols:=
+by intros i j h; simp [h]
+
+/-- `Hᵀ` is a Hadamard matrix suppose `H` is. -/
+instance transpose [decidable_eq I] : Hadamard_matrix Hᵀ :=
+begin
+  refine{..}, {intros, simp},
+  simp [transpose_has_orthogonal_rows_iff_has_orthogonal_cols]
+end
+
+/-- `Hᵀ` is a Hadamard matrix implies `H` is a Hadamard matrix.-/
+lemma of_Hadamard_matrix_transpose [decidable_eq I] 
+{H : matrix I I ℚ} (h: Hadamard_matrix Hᵀ): 
+Hadamard_matrix H :=
+by convert Hadamard_matrix.transpose Hᵀ; simp
 
 lemma card_match_eq {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 (set.card (matched H i₁ i₂) : ℚ) = ∑ j in (matched H i₁ i₂).to_finset, H i₁ j * H i₂ j :=
@@ -451,36 +470,29 @@ end neg
 
 variables [decidable_eq I] (H : matrix I I ℚ) [Hadamard_matrix H] 
 
+/-- Negating any row `i` of a Hadamard matrix `H` produces another Hadamard matrix. -/
 instance Hadamard_matrix.neg_row (i : I) : 
 Hadamard_matrix (H.neg_row i) := 
 begin
+  -- first goal
   refine {..},
   { intros j k,
     simp [neg_row,  update_row_apply],
-    by_cases j = i; simp* at *,
-  },
+    by_cases j = i; simp* at * },
+  -- second goal
   { intros j k hjk,
     by_cases h1 : j = i, any_goals {by_cases h2 : k = i},
     any_goals {simp [*, neg_row, update_row_apply]},
-    have h':= (rfl.congr (eq.symm h2)).mp h1,
-    contradiction
-  }
+    tidy }
 end
 
-instance Hadamard_matrix.neg_col (i : I) : 
-Hadamard_matrix (H.neg_col i) := 
+/-- Negating any column `j` of a Hadamard matrix `H` produces another Hadamard matrix. -/
+instance Hadamard_matrix.neg_col (j : I) : 
+Hadamard_matrix (H.neg_col j) := 
 begin
-  refine {..},
-  { intros j k,
-    simp [neg_col,  update_column_apply],
-    by_cases k = i; simp* at *,
-  },
-  { intros j k hjk,
-    simp [*, neg_col, dot_product, update_column_apply],
-    simp [apply_ite has_neg.neg],
-    rw ← dot_product,
-    simp *,  
-  }
+  apply of_Hadamard_matrix_transpose, --changes the goal to `(H.neg_col j)ᵀ.Hadamard_matrix`
+  simp [transpose_neg_col, Hadamard_matrix.neg_row] 
+  -- `(H.neg_col j)ᵀ = Hᵀ.neg_row j`, in which the RHS has been proved to be a Hadamard matrix.
 end
 
 end normalize
@@ -579,18 +591,18 @@ begin
 end
 
 theorem Hadamard_matrix.order_conclusion_1: 
-∀ (n : ℕ), ∃ {I : Type*} [inst : fintype I] 
-{H : @matrix I I inst inst ℚ} (h : @Hadamard_matrix I inst H), 
+∀ (n : ℕ),  ∃ {I : Type*} [inst : fintype I]
+(H : @matrix I I inst inst ℚ) [@Hadamard_matrix I inst H], 
 @fintype.card I inst = 2^n := 
 begin
   intro n,
-  induction n with n hn,
+  induction n with n ih,
   -- the case 0
-  { refine ⟨punit, (infer_instance), H_1', Hadamard_matrix.H_1', by simp⟩ },
+  {exact ⟨punit, infer_instance, H_1', infer_instance, by simp⟩},
   -- the case n.succ
-  rcases hn with ⟨I, inst, H, h, hI⟩, resetI,
-  refine ⟨ I ⊕ I, infer_instance, H.Sylvester_constr₀, infer_instance, _ ⟩,
-  rw [fintype.card_sum, hI], ring_nf,
+  rcases ih with ⟨I, inst, H, h, hI⟩, resetI, -- unfold the IH
+  refine ⟨I ⊕ I, infer_instance, H.Sylvester_constr₀, infer_instance, _⟩,
+  rw [fintype.card_sum, hI], ring_nf, -- this line proves `card (I ⊕ I) = 2 ^ n.succ`
 end
 
 end Sylvester_constr
@@ -603,37 +615,36 @@ def Sylvester_constr
 (H₁ : matrix I I ℚ) [Hadamard_matrix H₁] (H₂ : matrix J J ℚ) [Hadamard_matrix H₂] : 
 matrix (I × J) (I × J) ℚ := H₁ ⊗ H₂
 
-@[instance]
-theorem Hadamard_matrix.Sylvester_constr'
+@[instance] theorem Hadamard_matrix.Sylvester_constr'
 (H₁ : matrix I I ℚ) [Hadamard_matrix H₁] (H₂ : matrix J J ℚ) [Hadamard_matrix H₂] : 
 Hadamard_matrix (H₁ ⊗ H₂) :=
 begin
   refine {..},
+  -- first goal
   { rintros ⟨i₁, j₁⟩ ⟨i₂, j₂⟩,
-    simp [Kronecker],
-    obtain (h | h) := one_or_neg_one H₁ i₁ i₂;
+    simp [Kronecker], 
+    -- the current goal : H₁ i₁ i₂ * H₂ j₁ j₂ = 1 ∨ H₁ i₁ i₂ * H₂ j₁ j₂ = -1
+    obtain (h | h) := one_or_neg_one H₁ i₁ i₂; -- prove by cases : H₁ i₁ i₂ = 1 or -1
     simp [h] },
+  -- second goal
   rintros ⟨i₁, j₁⟩ ⟨i₂, j₂⟩ h,
-  simp [dot_product, ←finset.univ_product_univ, finset.sum_product, Kronecker],
-  have : ∑ (x : I) (x_1 : J), H₁ i₁ x * H₂ j₁ x_1 * (H₁ i₂ x * H₂ j₂ x_1) 
-       =  ∑ (x : I), (H₁ i₁ x * H₁ i₂ x) * ∑ (y : J), (H₂ j₁ y * H₂ j₂ y),
-  { simp [finset.mul_sum], repeat {apply finset.sum_congr rfl, intros x hx}, ring },
-  rw this, clear this,
-  by_cases hj: j₁ = j₂, any_goals {simp*},
-  rw [← finset.sum_mul],
-  by_cases hi: i₁ = i₂, any_goals {simp* at *},
+  simp [dot_product_Kronecker_row_split],
+  -- by cases j₁ = j₂; simp* closes the case j₁ ≠ j₂
+  by_cases hi: i₁ = i₂, any_goals {simp*},
+  -- the left case: i₁ = i₂
+  by_cases hi: j₁ = j₂, any_goals {simp* at *},
 end
 
-@[instance]
-theorem Hadamard_matrix.Sylvester_constr
+/-- wraps `Hadamard_matrix.Sylvester_constr'`-/
+@[instance] theorem Hadamard_matrix.Sylvester_constr
 (H₁ : matrix I I ℚ) [Hadamard_matrix H₁] (H₂ : matrix J J ℚ) [Hadamard_matrix H₂] : 
 Hadamard_matrix (Sylvester_constr H₁ H₂) :=
 Hadamard_matrix.Sylvester_constr' H₁ H₂
 
 theorem {u v} Hadamard_matrix.order_conclusion_2 {I : Type u} {J : Type v} [fintype I] [fintype J]
 (H₁ : matrix I I ℚ) [Hadamard_matrix H₁] (H₂ : matrix J J ℚ) [Hadamard_matrix H₂] :
-∃ {K : Type max u v} [inst : fintype K] (H : @matrix K K inst inst ℚ), 
-@Hadamard_matrix K inst H ∧ @fintype.card K inst = card I * card J :=
+∃ {K : Type max u v} [inst : fintype K] (H : @matrix K K inst inst ℚ),
+by exactI Hadamard_matrix H ∧ card K = card I * card J :=
 ⟨(I × J), _, Sylvester_constr H₁ H₂, ⟨infer_instance, card_prod I J⟩⟩
 
 end general_Sylvester_constr
@@ -649,14 +660,15 @@ local notation `q` := fintype.card F
 open finite_field
 
 /- ## Jacobsthal_matrix -/
-variable (F)
+variable (F) -- `F` is an explicit variable to `Jacobsthal_matrix`.
 @[reducible] def Jacobsthal_matrix : matrix F F ℚ := λ a b, χ (a-b)
 
 namespace Jacobsthal_matrix
 
+/-- `J` is the circulant matrix `cir χ`. -/
 lemma eq_cir : (Jacobsthal_matrix F) = cir χ := rfl
 
-variable {F}
+variable {F} -- this line makes `F` an implicit variable to the following lemmas/defs
 
 @[simp] lemma diag_entry_eq_zero (i : F) : (Jacobsthal_matrix F) i i = 0 :=
 by simp [Jacobsthal_matrix]
@@ -677,40 +689,56 @@ by by_cases i=j; simp * at *
 lemma mul_transpose_self (hp : p ≠ 2) : 
 (Jacobsthal_matrix F) ⬝ (Jacobsthal_matrix F)ᵀ = (q : ℚ) • 1 - all_one := 
 begin
-  ext,
-  by_cases i = j,
-  { rw ← h,
-    simp [mul_apply, all_one],
-    simp [sum_ite, filter_ne, fintype.card],
-    rw @card_erase_of_mem' _ _ _ (@finset.univ F _) _, 
-    any_goals {simp}},
-  simp [*, mul_apply, Jacobsthal_matrix, all_one, quad_char_sum_mul h hp],
+  ext i j,
+  simp [mul_apply, all_one, Jacobsthal_matrix, one_apply],
+  -- the current goal is 
+  -- ∑ (x : F), χ (i - x) * χ (j - x) = ite (i = j) q 0 - 1
+  by_cases i = j, 
+  -- when i = j
+  { simp[h, sum_ite, filter_ne, fintype.card],
+    rw [@card_erase_of_mem' _ _ j (@finset.univ F _) _];
+    simp },
+  -- when i ≠ j
+  simp [quad_char.sum_mul h hp, h],
 end
 
 -- J ⬝ one = 0
 @[simp] lemma mul_all_one (hp : p ≠ 2) : 
 (Jacobsthal_matrix F) ⬝ (all_one : matrix F F ℚ) = 0 := 
 begin
-  ext,
+  ext i j,
   simp [all_one, Jacobsthal_matrix, mul_apply],
-  exact quad_char.sum_in_univ_eq_zero_reindex_1 hp,
+  -- the current goal: ∑ (x : F), χ (i - x) = 0
+  exact quad_char.sum_eq_zero_reindex_1 hp,
 end
 
 -- one ⬝ J = 0
 @[simp] lemma all_one_mul (hp : p ≠ 2) : 
 (all_one : matrix F F ℚ) ⬝ (Jacobsthal_matrix F) = 0 := 
 begin
-  ext,
+  ext i j,
   simp [all_one, Jacobsthal_matrix, mul_apply],
-  exact quad_char.sum_in_univ_eq_zero_reindex_2 hp,
+  -- the current goal: ∑ (x : F), χ (x - j) = 0
+  exact quad_char.sum_eq_zero_reindex_2 hp,
 end
 
+-- J ⬝ col 1 = 0
 @[simp] lemma mul_col_one (hp : p ≠ 2) : 
 Jacobsthal_matrix F ⬝ col 1 = 0 := 
 begin
   ext,
   simp [Jacobsthal_matrix, mul_apply],
-  exact quad_char.sum_in_univ_eq_zero_reindex_1 hp,
+  -- the current goal: ∑ (x : F), χ (i - x) = 0
+  exact quad_char.sum_eq_zero_reindex_1 hp,
+end
+
+-- row 1 ⬝ Jᵀ = 0
+@[simp] lemma row_one_mul_transpose (hp : p ≠ 2) : 
+row 1 ⬝ (Jacobsthal_matrix F)ᵀ = 0 := 
+begin
+  apply eq_of_transpose_eq,
+  simp,
+  exact mul_col_one hp
 end
 
 variables {F} 
@@ -764,30 +792,26 @@ variable {F}
 theorem Hadamard_matrix.Paley_constr_1 (h : q ≡ 3 [MOD 4]): 
 Hadamard_matrix (Paley_constr_1 F) := 
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F,
-  resetI,
-  obtain ⟨hp, h'⟩ := char_ne_two' p h,
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive a character p of F
+  resetI, -- resets the instance cache
+  obtain ⟨hp, h'⟩ := char_ne_two' p h, -- prove p ≠ 2
   refine {..},
+  -- first goal
   {
     rintros (i | i)  (j | j),
     all_goals {simp [Paley_constr_1, one_apply, Jacobsthal_matrix]},
-    by_cases i = j,
-    all_goals {simp*}
+    {by_cases i = j; simp*}
   },
-  rw ←mul_tranpose_is_diagonal_iff_has_orthogonal_rows,
-  simp only [Paley_constr_1, from_blocks_transpose, from_blocks_multiply],
-  apply is_diagnoal_of_block_conditions,
-  repeat {split},
-  { exact is_diagonal_of_unit _ },
-  { simp [col_one_mul_row_one, matrix.add_mul, matrix.mul_add],
-    rw [mul_transpose_self hp, is_skesym_of' h, add_assoc, add_comm, add_assoc], 
-    simp,
-    assumption },
-  { simp [matrix.mul_add], 
-    rw [← transpose_col, ← transpose_mul, mul_col_one hp, transpose_zero],
-    assumption },
-  { simp [matrix.add_mul], rw [mul_col_one hp],
-    assumption },
+  -- second goal
+  rw ←mul_tranpose_is_diagonal_iff_has_orthogonal_rows,   -- changes the goal to prove J ⬝ Jᵀ is diagonal
+  simp [Paley_constr_1, from_blocks_transpose, from_blocks_multiply, 
+        matrix.add_mul, matrix.mul_add, col_one_mul_row_one],
+  rw [mul_col_one hp, row_one_mul_transpose hp, mul_transpose_self hp], 
+  simp,
+  convert is_diagnoal_of_block_conditions ⟨is_diagonal_of_unit _, _, rfl, rfl⟩,
+  -- to show the lower right corner block is diagonal
+  {rw [is_skesym_of' h, add_assoc, add_comm, add_assoc], simp},
+  any_goals {assumption},
 end
 
 /- ## end Paley_constr_1 -/
@@ -995,7 +1019,7 @@ begin
     rcases a with (a | a), 
     any_goals {rcases b with (b | b)},
     any_goals {simp [from_blocks, one_apply], ring},
-    any_goals {rw [quad_char.sum_in_univ_eq_zero_reindex_2 hp], ring},
+    any_goals {rw [quad_char.sum_eq_zero_reindex_2 hp], ring},
     any_goals {assumption} },
 end
 

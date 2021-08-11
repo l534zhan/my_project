@@ -151,6 +151,14 @@ by simp [transpose]
 lemma trans_row_eq_col (A : matrix I J α) (j : J) : Aᵀ j = (λ i, A i j):=
 by ext; simp [transpose]
 
+lemma eq_of_transpose_eq {A B : matrix I J α} : Aᵀ = Bᵀ → A = B :=
+begin
+  intros h, ext i j,
+  have h':= congr_fun (congr_fun h j) i,
+  simp [transpose] at h',
+  assumption
+end
+
 /-
 
 /-- The conjugate transpose of a matrix defined in term of `star`. -/

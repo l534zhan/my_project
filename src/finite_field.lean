@@ -654,7 +654,7 @@ begin
   assumption       
 end
 
-lemma quad_char.sum_in_univ_eq_zero (hp : p ≠ 2):
+lemma quad_char.sum_eq_zero (hp : p ≠ 2):
 ∑ (a : F), χ a = 0 :=
 begin
   rw [finset.sum_split _ (λ b, b ≠ (0 : F)), quad_char.sum_in_units_eq_zero F hp],
@@ -664,24 +664,24 @@ end
 variable {F}
 
 @[simp]
-lemma quad_char.sum_in_univ_eq_zero_reindex_1 (hp : p ≠ 2) {a : F}: --cite
+lemma quad_char.sum_eq_zero_reindex_1 (hp : p ≠ 2) {a : F}: 
 ∑ (b : F), χ (a - b) = 0 :=
 begin
-  rw ← quad_char.sum_in_univ_eq_zero F hp,
+  rw ← quad_char.sum_eq_zero F hp,
   refine fintype.sum_equiv ((equiv.add_left (-a)).trans (equiv.neg _)) _ _ _,
   simp[add_comm, sub_eq_add_neg],
 end
 
 @[simp]
-lemma quad_char.sum_in_univ_eq_zero_reindex_2 (hp : p ≠ 2) {b : F}: --cite
+lemma quad_char.sum_eq_zero_reindex_2 (hp : p ≠ 2) {b : F}:
 ∑ (a : F), χ (a - b) = 0 :=
 begin
-  rw ← quad_char.sum_in_univ_eq_zero F hp,
+  rw ← quad_char.sum_eq_zero F hp,
   refine fintype.sum_equiv (equiv.add_right (-b)) _ _ _,
   simp[add_comm, sub_eq_add_neg],
 end
 
-lemma quad_char_sum_mul'_aux {c : F} (hc : c ≠ 0) :
+lemma quad_char.sum_mul'_aux {c : F} (hc : c ≠ 0) :
 ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ (b⁻¹ * (b + c)) =
 ∑ (z : F) in filter (λ (z : F), ¬z = 1) univ, χ (z) :=
 begin
@@ -692,7 +692,7 @@ begin
     simp [*, mul_inv_rev', mul_add, mul_assoc, sub_ne_zero.mpr hz] }
 end
 
-theorem quad_char_sum_mul' {c : F} (hc : c ≠ 0) (hp : p ≠ 2): 
+theorem quad_char.sum_mul' {c : F} (hc : c ≠ 0) (hp : p ≠ 2): 
 ∑ b : F, χ (b) * χ (b + c) = -1 := 
 begin
   rw [finset.sum_split _ (λ b, b ≠ (0 : F))],
@@ -707,18 +707,18 @@ begin
   have h': ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ b * χ (b⁻¹ * (b + c)) = 
            ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ (b⁻¹ * (b + c)),
   { apply finset.sum_congr rfl, intros b hb, simp* at *},
-  rw [h, h', quad_char_sum_mul'_aux hc],
+  rw [h, h', quad_char.sum_mul'_aux hc],
   have g:= @finset.sum_split _ _ _ (@finset.univ F _) (χ) (λ b : F, b ≠ (1 : F)) _,
-  simp [quad_char.sum_in_univ_eq_zero F hp] at g,
+  simp [quad_char.sum_eq_zero F hp] at g,
   rw [← sub_zero (∑ (z : F) in filter (λ (b : F), ¬b = 1) univ, χ z), g],
   ring,
 end 
 
-theorem quad_char_sum_mul {a b : F} (hab : a ≠ b) (hp : p ≠ 2): 
+theorem quad_char.sum_mul {a b : F} (hab : a ≠ b) (hp : p ≠ 2): 
 ∑ i : F, χ (a - i) * χ (b - i) = -1 := 
 begin
   have hc := sub_ne_zero.mpr (ne.symm hab),
-  rw ← quad_char_sum_mul' hc hp,
+  rw ← quad_char.sum_mul' hc hp,
   refine fintype.sum_equiv ((equiv.add_left (-a)).trans (equiv.neg _)) _ _ _,
   intros,
   simp,

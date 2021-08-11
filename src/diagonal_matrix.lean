@@ -32,8 +32,20 @@ def has_orthogonal_rows [has_mul α] [add_comm_monoid α] (A : matrix I J α) : 
 ∀ ⦃i₁ i₂⦄, i₁ ≠ i₂ → dot_product (A i₁) (A i₂) = 0
 
 /-- `A.has_orthogonal_cols` means matrix `A` has orthogonal (with respect to `dot_product`) columns. -/
-def has_orthogonal_clos [has_mul α] [add_comm_monoid α] (A : matrix I J α) : Prop := 
+def has_orthogonal_cols [has_mul α] [add_comm_monoid α] (A : matrix I J α) : Prop := 
 ∀ ⦃i₁ i₂⦄, i₁ ≠ i₂ → dot_product (λ j, A  j i₁) (λ j, A j i₂) = 0
+
+/-- `Aᵀ` has orthogonal rows iff `A` has orthogonal columns. -/
+lemma transpose_has_orthogonal_rows_iff_has_orthogonal_cols
+[has_mul α] [add_comm_monoid α] (A : matrix I J α) :
+Aᵀ.has_orthogonal_rows ↔ A.has_orthogonal_cols :=
+by simp [has_orthogonal_rows, has_orthogonal_cols, trans_row_eq_col]
+
+/-- `Aᵀ` has orthogonal columns iff `A` has orthogonal rows. -/
+lemma transpose_has_orthogonal_cols_iff_has_orthogonal_rows
+[has_mul α] [add_comm_monoid α] (A : matrix I J α) :
+Aᵀ.has_orthogonal_cols ↔ A.has_orthogonal_rows :=
+by simp [has_orthogonal_rows, has_orthogonal_cols, trans_row_eq_col]
 
 /-- `A.is_diagonal` means square matrix `A` is a dianogal matrix: `∀ i j, i ≠ j → A i j = 0`. -/
 def is_diagonal [has_zero α] (A : matrix I I α) : Prop := ∀ i j, i ≠ j → A i j = 0
@@ -131,16 +143,11 @@ end
 /-- `(Aᵀ ⬝ A).is_diagonal` iff `A.has_orthogonal_cols`. -/
 lemma tranpose_mul_is_diagonal_iff_has_orthogonal_cols
 [has_mul α] [add_comm_monoid α] {A : matrix I J α} :
-(Aᵀ ⬝ A).is_diagonal ↔ A.has_orthogonal_clos :=
+(Aᵀ ⬝ A).is_diagonal ↔ A.has_orthogonal_cols :=
 begin
-  split,
-  { rintros h i1 i2 hi,
-    have h' := h i1 i2 hi,
-    simp [dot_product, mul_apply,*] at *, },
-  { intros ha i j h,
-    have h':= ha h,
-    simp [mul_apply, *, dot_product] at *,
-  }
+  simp [←transpose_has_orthogonal_rows_iff_has_orthogonal_cols],
+  convert mul_tranpose_is_diagonal_iff_has_orthogonal_rows,
+  simp
 end
 
 /-- `(A ⊗ B).is_diagonal` if both `A` and `B` are diagonal. -/
