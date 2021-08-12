@@ -294,7 +294,7 @@ by intros i j h; simp [h]
 /-- `Hᵀ` is a Hadamard matrix suppose `H` is. -/
 instance transpose [decidable_eq I] : Hadamard_matrix Hᵀ :=
 begin
-  refine{..}, {intros, simp},
+  refine{..}, {intros, simp[transpose]},
   simp [transpose_has_orthogonal_rows_iff_has_orthogonal_cols]
 end
 
@@ -677,17 +677,17 @@ by simp [Jacobsthal_matrix]
 (Jacobsthal_matrix F) i j = 1 ∨ (Jacobsthal_matrix F) i j = -1 :=
 by simp [*, Jacobsthal_matrix]
 
-@[simp] lemma non_diag_entry_square_eq {i j : F} (h : i ≠ j): 
+@[simp] lemma non_diag_entry_Euare_eq {i j : F} (h : i ≠ j): 
 (Jacobsthal_matrix F) i j * (Jacobsthal_matrix F) i j = 1 :=
 by obtain (h₁ | h₂) := Jacobsthal_matrix.non_diag_entry_eq h; simp*
 
-@[simp] lemma entry_square_eq (i j : F) : 
+@[simp] lemma entry_Euare_eq (i j : F) : 
 (Jacobsthal_matrix F) i j * (Jacobsthal_matrix F) i j = ite (i=j) 0 1 :=
 by by_cases i=j; simp * at *
 
--- JJᵀ = qI − one
+-- JJᵀ = qI − 𝟙
 lemma mul_transpose_self (hp : p ≠ 2) : 
-(Jacobsthal_matrix F) ⬝ (Jacobsthal_matrix F)ᵀ = (q : ℚ) • 1 - all_one := 
+(Jacobsthal_matrix F) ⬝ (Jacobsthal_matrix F)ᵀ = (q : ℚ) • 1 - 𝟙 := 
 begin
   ext i j,
   simp [mul_apply, all_one, Jacobsthal_matrix, one_apply],
@@ -702,9 +702,9 @@ begin
   simp [quad_char.sum_mul h hp, h],
 end
 
--- J ⬝ one = 0
+-- J ⬝ 𝟙 = 0
 @[simp] lemma mul_all_one (hp : p ≠ 2) : 
-(Jacobsthal_matrix F) ⬝ (all_one : matrix F F ℚ) = 0 := 
+(Jacobsthal_matrix F) ⬝ (𝟙 : matrix F F ℚ) = 0 := 
 begin
   ext i j,
   simp [all_one, Jacobsthal_matrix, mul_apply],
@@ -712,13 +712,12 @@ begin
   exact quad_char.sum_eq_zero_reindex_1 hp,
 end
 
--- one ⬝ J = 0
+-- 𝟙 ⬝ J = 0
 @[simp] lemma all_one_mul (hp : p ≠ 2) : 
-(all_one : matrix F F ℚ) ⬝ (Jacobsthal_matrix F) = 0 := 
+(𝟙 : matrix F F ℚ) ⬝ (Jacobsthal_matrix F) = 0 := 
 begin
   ext i j,
   simp [all_one, Jacobsthal_matrix, mul_apply],
-  -- the current goal: ∑ (x : F), χ (x - j) = 0
   exact quad_char.sum_eq_zero_reindex_2 hp,
 end
 
@@ -788,6 +787,7 @@ end
 
 variable {F}
 
+/-- if `q ≡ 3 [MOD 4]`, `Paley_constr_1 F` is a Hadamard matrix. -/
 @[instance]
 theorem Hadamard_matrix.Paley_constr_1 (h : q ≡ 3 [MOD 4]): 
 Hadamard_matrix (Paley_constr_1 F) := 
@@ -814,6 +814,22 @@ begin
   any_goals {assumption},
 end
 
+open Hadamard_matrix
+
+/-- if `q ≡ 3 [MOD 4]`, `Paley_constr_1 F` is a skew Hadamard matrix. -/
+theorem Hadamard_matrix.Paley_constr_1_is_skew (h : q ≡ 3 [MOD 4]): 
+@is_skew _ _ (Paley_constr_1 F) (Hadamard_matrix.Paley_constr_1 h) _ := 
+begin
+  simp [is_skew, Paley_constr_1, from_blocks_transpose, 
+        from_blocks_add, is_skesym_of' h],
+  have : 1 + -Jacobsthal_matrix F + (1 + Jacobsthal_matrix F) = 1 + 1, 
+  {noncomm_ring},
+  rw [this], clear this,
+  ext (a | i) (b | j),
+  swap 3, rintro (b | j),
+  any_goals {simp [one_apply, from_blocks, bit0]},
+end
+
 /- ## end Paley_constr_1 -/
 
 /- ## Paley_constr_2 -/
@@ -823,77 +839,80 @@ namespace Paley_constr_2
 
 variable (F)
 
-def pre_1 : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ :=
+def C : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ :=
 (1 : matrix unit unit ℚ).from_blocks (-1) (-1) (-1)
 
-lemma pre_1_is_sym : pre_1.is_sym :=
+@[simp] lemma C_is_sym : C.is_sym :=
 is_sym_of_block_conditions ⟨by simp, by simp, by simp⟩
 
-lemma pre_1_is_sym' (a b : unit ⊕ unit) : pre_1 a b = pre_1 b a :=
-begin
-  have h:= congr_fun (congr_fun pre_1_is_sym b) a,
-  simp [transpose_apply] at h,
-  assumption
-end
-
-def pre_2 : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ :=
+def D : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ :=
 (1 : matrix unit unit ℚ).from_blocks 1 1 (-1)
 
-lemma pre_2_is_sym : pre_2.is_sym :=
+@[simp] lemma D_is_sym : D.is_sym :=
 is_sym_of_block_conditions ⟨by simp, by simp, by simp⟩
 
-lemma pre_2_is_sym' (a b : unit ⊕ unit) : pre_2 a b = pre_2 b a :=
+lemma C_mul_D_anticomm : C ⬝ D = - D ⬝ C :=
 begin
-  have h:= congr_fun (congr_fun pre_2_is_sym b) a,
-  simp [transpose_apply] at h,
-  assumption
+  ext (i | i) (j | j),
+  swap 3, rintros (j | j),
+  any_goals {simp [from_blocks_multiply, C, D]}
 end
 
-def sq : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ :=
+def E : matrix (unit ⊕ unit) (unit ⊕ unit) ℚ :=
 (2 : matrix unit unit ℚ).from_blocks 0 0 2
 
-@[simp] lemma sq_is_diagonal : sq.is_diagonal := 
+@[simp] lemma E_is_diagonal : E.is_diagonal := 
 is_diagnoal_of_block_conditions ⟨by simp, by simp, rfl, rfl⟩
 
-@[simp] lemma sq_pre_1 : 
-pre_1 ⬝ pre_1ᵀ = sq := 
-begin
-  simp [from_blocks_transpose, from_blocks_multiply, sq, pre_1],
-  congr' 1,
-end
+@[simp] lemma C_mul_self : 
+C ⬝ C = E := 
+by simp [from_blocks_transpose, from_blocks_multiply, E, C]; congr' 1
 
-@[simp] lemma sq_pre_2 : 
-pre_2 ⬝ pre_2ᵀ = sq := 
-begin
-  simp [from_blocks_transpose, from_blocks_multiply, sq, pre_2],
-  congr' 1,
-end
+@[simp] lemma C_mul_transpose_self : 
+C ⬝ Cᵀ = E := 
+by simp [C_is_sym.eq]
  
+@[simp] lemma D_mul_self : 
+D ⬝ D = E := 
+by simp [from_blocks_transpose, from_blocks_multiply, E, D]; congr' 1
+
+@[simp] lemma D_mul_transpose_self : 
+D ⬝ Dᵀ = E := 
+by simp [D_is_sym.eq]
+
 def replace (A : matrix I J ℚ) : 
 matrix (I × (unit ⊕ unit)) (J × (unit ⊕ unit)) ℚ :=
 λ ⟨i, a⟩ ⟨j, b⟩, 
-if (A i j = 0) then pre_1 a b 
-               else (A i j) • pre_2 a b
+if (A i j = 0) then C a b 
+               else (A i j) • D a b
  
-lemma replace_transpose (A : matrix I J ℚ) :
+lemma transpose_replace (A : matrix I J ℚ) :
 (replace A)ᵀ = replace (Aᵀ) := 
 begin
   ext ⟨i, a⟩ ⟨j, b⟩,
   simp [transpose_apply, replace],
   congr' 1,
-  rw pre_1_is_sym' b a,
-  rw pre_2_is_sym' b a,
+  {rw [C_is_sym.apply']},
+  {rw [D_is_sym.apply']},
+end
+
+/-- `replace A` is a symmetric matrix if `A` is. -/
+lemma replace_is_sym_of {A : matrix I I ℚ} (h : A.is_sym) : 
+(replace A).is_sym:= 
+begin
+  ext ⟨i, a⟩ ⟨j, b⟩,
+  simp [transpose_replace, replace, h.apply', C_is_sym.apply', D_is_sym.apply']
 end
 
 lemma replace_zero :
-replace (0 : matrix unit unit ℚ) = 1 ⊗ pre_1 :=
+replace (0 : matrix unit unit ℚ) = 1 ⊗ C :=
 begin
   ext ⟨a, b⟩ ⟨c, d⟩,
   simp [replace, Kronecker, one_apply]
 end
 
-lemma replace_no_zero_entry_matrix
-{A : matrix I J ℚ} (h : ∀ i j, A i j ≠ 0) : replace A = A ⊗ pre_2 := 
+lemma replace_matrix_of_no_zero_entry
+{A : matrix I J ℚ} (h : ∀ i j, A i j ≠ 0) : replace A = A ⊗ D := 
 begin
   ext ⟨i, a⟩ ⟨j, b⟩,
   simp [replace, Kronecker],
@@ -901,65 +920,53 @@ begin
   exact absurd g (h i j)
 end
 
-lemma replace_minus_row_one : 
-replace (-row 1 : matrix unit F ℚ) = (-row 1) ⊗ pre_2 :=
-replace_no_zero_entry_matrix (λ a i, by simp [row])
+lemma replace_Jacobsthal : 
+replace (Jacobsthal_matrix F) = 
+((Jacobsthal_matrix F) + 1) ⊗ D + 1 ⊗ (C - D):= 
+begin
+  ext ⟨i, a⟩ ⟨j, b⟩,
+  by_cases i = j,
+  any_goals {simp [h, Jacobsthal_matrix, replace, Kronecker]},
+end
 
-@[simp] lemma sq_replace_zero :
-replace (0 : matrix unit unit ℚ) ⬝ (replace (0 : matrix unit unit ℚ))ᵀ = 1 ⊗ sq :=
-by simp [replace_zero, K_transpose, K_mul]
+lemma replace_neg_row_one : 
+replace (-row 1 : matrix unit F ℚ) = (-row 1) ⊗ D :=
+replace_matrix_of_no_zero_entry (λ a i, by simp [row])
 
-@[simp] lemma sq_replace_no_zero_entry_matrix 
+@[simp] lemma replace_zero_mul_transpose_self :
+replace (0 : matrix unit unit ℚ) ⬝ (replace (0 : matrix unit unit ℚ))ᵀ = 1 ⊗ E :=
+by simp [replace_zero, transpose_K, K_mul]
+
+@[simp] lemma replace_matrix_of_no_zero_entry_mul_transpose_self 
 {A : matrix I J ℚ} (h : ∀ i j, A i j ≠ 0) :   
-(replace A) ⬝ (replace A)ᵀ = (A ⬝ Aᵀ) ⊗ sq := 
-by simp [replace_no_zero_entry_matrix h, K_transpose, K_mul]  
+(replace A) ⬝ (replace A)ᵀ = (A ⬝ Aᵀ) ⊗ E := 
+by simp [replace_matrix_of_no_zero_entry h, transpose_K, K_mul]  
+
+example (a b c: ℚ) : c - (a - b) = c -a + b := by simp [sub_eq_add_neg, sub_add, add_comm, add_left_comm]
 
 variable {F}
 
-lemma sq_replace_Jacobsthal_matrix_aux (hF : card F ≡ 1 [MOD 4]) :   
+lemma replace_Jacobsthal_mul_transpose_self' (h : q ≡ 1 [MOD 4]) : 
 replace (Jacobsthal_matrix F) ⬝ (replace (Jacobsthal_matrix F))ᵀ = 
-((Jacobsthal_matrix F) ⬝ (Jacobsthal_matrix F)ᵀ + 1 ⬝ (1 : matrix F F ℚ)ᵀ) ⊗ sq := 
+((Jacobsthal_matrix F) ⬝ (Jacobsthal_matrix F)ᵀ + 1) ⊗ E :=
 begin
-  ext ⟨i, a⟩ ⟨j, b⟩,
-  simp only [Kronecker, mul_apply, ←finset.univ_product_univ, finset.sum_product,
-             dmatrix.add_apply, ←finset.sum_add_distrib, sum_mul],
-  rw finset.sum_split _ (λ k, k = i ∨ k = j),
-  rw finset.sum_split univ (λ k, k = i ∨ k = j),
-  congr' 1, 
-  { by_cases i = j,
-    { simp [h, fintype.sum_sum_type, Jacobsthal_matrix, replace], 
-      obtain (a | a) := a,
-      any_goals { obtain (b | b) := b },
-      any_goals { simp [pre_1, pre_2, sq, one_apply] },
-      ring, ring },
-    simp [h, (ne.symm h), fintype.sum_sum_type, Jacobsthal_matrix, replace],
-    obtain (a | a) := a,
-    any_goals { obtain (b | b) := b },
-    any_goals { simp [pre_1, pre_2, sq, one_apply] },
-    any_goals { simp [quad_char_is_sym_of' hF i j], ring },
-  },
-  any_goals {apply finset.sum_congr rfl, intros k hk, simp at hk, simp [fintype.sum_sum_type]},
-  push_neg at hk,
-  obtain ⟨h₁, h₂⟩ := hk,
-  have g₁ : i - k ≠ 0, {intros h, apply h₁, exact (eq_of_sub_eq_zero h).symm},
-  have g₂ : j - k ≠ 0, {intros h, apply h₂, exact (eq_of_sub_eq_zero h).symm},
-  simp [Jacobsthal_matrix, replace, g₁, g₂, h₁.symm, h₂.symm],
-  any_goals {obtain (a | a) := a}, 
-  any_goals {obtain (b | b) := b},
-  any_goals {simp [pre_1, pre_2, sq, one_apply]},
-  ring, ring,
+  simp [replace_Jacobsthal, transpose_K, matrix.add_mul, matrix.mul_add, 
+        K_mul, matrix.sub_mul, matrix.mul_sub, D_is_sym.eq, C_is_sym.eq, 
+        C_mul_D_anticomm, ←sub_add, K_sub, add_K, (is_sym_of h).eq],
+  noncomm_ring
 end
 
-lemma sq_replace_Jacobsthal_matrix (hF : card F ≡ 1 [MOD 4]) :   
+@[simp]
+lemma replace_Jacobsthal_mul_transpose_self (h : q ≡ 1 [MOD 4]) :   
 replace (Jacobsthal_matrix F) ⬝ (replace (Jacobsthal_matrix F))ᵀ = 
-(((q : ℚ) + 1) • (1 : matrix F F ℚ) - all_one) ⊗ sq := 
+(((q : ℚ) + 1) • (1 : matrix F F ℚ) - 𝟙) ⊗ E := 
 begin
   obtain ⟨p, inst⟩ := char_p.exists F,
-  obtain hp := @char_ne_two _ _ _ _ inst (or.inl hF),
-  rw [sq_replace_Jacobsthal_matrix_aux hF],
-  rw [Jacobsthal_matrix.mul_transpose_self hp],
-  congr' 1,
-  simp [add_smul, sub_add_eq_add_sub],
+  resetI,
+  obtain hp := char_ne_two p (or.inl h),
+  simp [replace_Jacobsthal_mul_transpose_self' h, add_smul],
+  rw [mul_transpose_self hp],
+  congr' 1, noncomm_ring,
   assumption
 end
 
@@ -975,12 +982,26 @@ def Paley_constr_2 :=
 (replace (- col 1))
 (replace (Jacobsthal_matrix F))
 
+variable {F}
+/-- `Paley_constr_2 F` is a symmetric matrix when `card F ≡ 1 [MOD 4]`. -/
+@[simp] 
+lemma Paley_constr_2_is_sym (h : q ≡ 1 [MOD 4]) : 
+(Paley_constr_2 F).is_sym :=
+begin
+  convert is_sym_of_block_conditions ⟨_, _, _⟩,
+  { simp [replace_zero] },
+  { apply replace_is_sym_of (is_sym_of h) },
+  { simp [transpose_replace] }
+end
+
+variable (F)
+/-- Every entry of `Paley_constr_2 F` equals `1` or `-1`. -/
 lemma Paley_constr_2.one_or_neg_one : 
 ∀ (i j : unit × (unit ⊕ unit) ⊕ F × (unit ⊕ unit)), 
 Paley_constr_2 F i j = 1 ∨ Paley_constr_2 F i j = -1 :=
 begin
   rintros (⟨a, (u₁|u₂)⟩ | ⟨i, (u₁ | u₂)⟩) (⟨b, (u₃|u₄)⟩ | ⟨j, (u₃ | u₄)⟩),
-  all_goals {simp [Paley_constr_2, one_apply, Jacobsthal_matrix, replace, pre_1, pre_2]},
+  all_goals {simp [Paley_constr_2, one_apply, Jacobsthal_matrix, replace, C, D]},
   all_goals {by_cases i = j},
   any_goals {simp [h]},
 end
@@ -988,39 +1009,30 @@ end
 variable {F}
 
 @[instance]
-theorem Hadamard_matrix.Paley_constr_2 (h : card F ≡ 1 [MOD 4]): 
+theorem Hadamard_matrix.Paley_constr_2 (h : q ≡ 1 [MOD 4]): 
 Hadamard_matrix (Paley_constr_2 F) :=
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F,
-  resetI,
-  obtain hp := char_ne_two p (or.inl h),
   refine {..},
   { exact Paley_constr_2.one_or_neg_one F },
   rw ←mul_tranpose_is_diagonal_iff_has_orthogonal_rows,
   have sym := mul_transpose_self_is_sym (Paley_constr_2 F),
-  convert is_diagnoal_of_sym_block_conditions' sym _ ⟨_, _, _⟩,
-  swap 5,
-  { simp [Paley_constr_2, from_blocks_transpose, from_blocks_multiply] },
-  { simp [row_one_mul_col_one, nat.smul_one_eq_coe, ← add_K],
-    apply Kronecker_prod_is_diagonal_of_both_are_diagonal; simp },
-  { simp only [col_one_mul_row_one, sq_replace_Jacobsthal_matrix h, ← add_K],
-    refine Kronecker_prod_is_diagonal_of_both_are_diagonal _ sq_is_diagonal,
-    simp },
-  { simp [replace_zero, replace_transpose, (is_sym_of h).eq, replace_minus_row_one, K_mul],
-    ext ⟨i, a⟩ ⟨j, b⟩,
-    simp [dmatrix.add_apply, mul_apply, ←finset.univ_product_univ, finset.sum_product],
-    rw finset.sum_comm,
-    simp [fintype.sum_sum_type, Kronecker, replace, Jacobsthal_matrix, finset.sum_ite],
-    simp [finset.filter_eq', finset.filter_ne'],
-    repeat {rw [finset.sum_erase _]},
-    swap 2, {simp},
-    swap 2, {simp},
-    simp [pre_1, pre_2, from_blocks_multiply],
-    rcases a with (a | a), 
-    any_goals {rcases b with (b | b)},
-    any_goals {simp [from_blocks, one_apply], ring},
-    any_goals {rw [quad_char.sum_eq_zero_reindex_2 hp], ring},
-    any_goals {assumption} },
+  simp [Paley_constr_2, from_blocks_transpose, from_blocks_multiply] at *,
+  convert is_diagnoal_of_sym_block_conditions sym ⟨_, _, _⟩,
+  any_goals {clear sym},
+  { simp [row_one_mul_col_one, ← add_K], 
+    apply K_is_diagonal_of; simp },
+  { simp [h, col_one_mul_row_one, ← add_K], 
+    apply smul_is_diagonal_of,
+    apply K_is_diagonal_of; simp },
+  { obtain ⟨p, inst⟩ := char_p.exists F,
+    resetI,
+    obtain hp := char_ne_two p (or.inl h),
+    simp [replace_zero, transpose_replace, replace_neg_row_one, 
+          replace_Jacobsthal, transpose_K, K_mul, D_is_sym.eq, C_is_sym.eq, 
+          matrix.mul_add, matrix.mul_sub, C_mul_D_anticomm, K_sub],
+    rw [row_one_mul_transpose hp],
+    simp [add_sub],
+    assumption }
 end
 
 /- ## end Paley_constr_2 -/
@@ -1359,7 +1371,7 @@ end
 
 lemma H_92_mul_transpose_self_is_diagonal : (H_92 ⬝ H_92ᵀ).is_diagonal :=
 begin
-  simp [H_92, K_transpose, matrix.mul_add, matrix.add_mul, K_mul, 
+  simp [H_92, transpose_K, matrix.mul_add, matrix.add_mul, K_mul, 
   cir_mul_comm _ a, cir_mul_comm c b, cir_mul_comm d b, cir_mul_comm d c],
   have : 
   (cir a ⬝ cir a)⊗1 + -(cir a ⬝ cir b)⊗i + -(cir a ⬝ cir c)⊗j + -(cir a ⬝ cir d)⊗k + 
@@ -1449,7 +1461,7 @@ end
 theorem Hadamard_matrix.Hadamard_conjecture: 
 ∀ k : ℕ, ∃ (I : Type*) (inst : fintype I) 
 (H : @matrix I I inst inst ℚ) (h : @Hadamard_matrix I inst H), 
-@fintype.card I inst = 4 * k := sorry
+by exactI card I = 4 * k := sorry
 
 end order
 /- ## end order -/

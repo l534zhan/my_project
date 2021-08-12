@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: Lu-Ming Zhang.
 -/
 import data.matrix.notation
-import matrix_basic
+import symmetric_matrix
 
 /-!
 # Hadamard product and Kronecker product.
@@ -257,7 +257,7 @@ end one_K_one
 section transpose
 variables [has_mul α]
 (A : matrix I J α) (B : matrix K L α)
-lemma K_transpose: (A ⊗ B)ᵀ = Aᵀ ⊗ Bᵀ :=
+lemma transpose_K: (A ⊗ B)ᵀ = Aᵀ ⊗ Bᵀ :=
 by ext ⟨a,b⟩ ⟨c,d⟩; simp [transpose, Kronecker]
 end transpose
 
@@ -270,22 +270,33 @@ end neg
 section conj_transpose
 open_locale matrix
 variables [comm_monoid α] [star_monoid α] (M₁ : matrix I J α) (M₂ : matrix K L α)
-lemma K_conj_transpose: (M₁ ⊗ M₂)ᴴ = M₁ᴴ ⊗ M₂ᴴ:=
+lemma conj_transpose_K: (M₁ ⊗ M₂)ᴴ = M₁ᴴ ⊗ M₂ᴴ:=
 by ext ⟨a,b⟩ ⟨c,d⟩; simp [conj_transpose,Kronecker, mul_comm]
-#check matrix.trace_apply
 end conj_transpose
 
 section distrib
-variables [distrib α]
-variables
-(A : matrix I J α)
-(B : matrix K L α)
-(B' : matrix K L α)
+
+variables [distrib α] (A : matrix I J α) (B : matrix K L α) (B' : matrix K L α)
+
 lemma K_add :A ⊗ (B + B') = A ⊗ B + A ⊗ B' :=
-  by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, left_distrib]}
+by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, left_distrib]}
+
 lemma add_K :(B + B') ⊗ A = B ⊗ A + B' ⊗ A :=
-  by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, right_distrib]}
+by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, right_distrib]}
+
 end distrib
+
+section distrib_sub
+
+variables [ring α] (A : matrix I J α) (B : matrix K L α) (B' : matrix K L α)
+
+lemma K_sub :A ⊗ (B - B') = A ⊗ B - A ⊗ B' :=
+by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, mul_sub]}
+
+lemma sub_K :(B - B') ⊗ A = B ⊗ A - B' ⊗ A :=
+by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, sub_mul]}
+
+end distrib_sub
 
 /-
 section non_comm
@@ -398,9 +409,9 @@ end inverse
 section symmetric
 variables [has_mul α]
 @[simp] lemma Kronecker.is_sym_of_is_sym {A : matrix I I α} {B : matrix J J α} (ha: A.is_sym) (hb: B.is_sym) :
-(A ⊗ B).is_sym := by simp [matrix.is_sym, K_transpose, *] at *
+(A ⊗ B).is_sym := by simp [matrix.is_sym, transpose_K, *] at *
 @[simp] lemma Kronecker.is_Hermitian_of_is_Hermitian {A : matrix I I ℂ} {B : matrix J J ℂ} (ha: A.is_Hermitian) (hb: B.is_Hermitian) :
-(A ⊗ B).is_Hermitian := by simp [matrix.is_Hermitian, K_conj_transpose, *] at *
+(A ⊗ B).is_Hermitian := by simp [matrix.is_Hermitian, conj_transpose_K, *] at *
 end symmetric
 
 /-
@@ -426,7 +437,7 @@ end pos_def
 section ortho
 variables  [decidable_eq I] [decidable_eq J]
 @[simp] lemma Kronecker.is_ortho_of_is_ortho {A : matrix I I ℝ} {B : matrix J J ℝ} (ha : A.is_ortho) (hb : B.is_ortho) :
-(A ⊗ B).is_ortho := by simp [matrix.is_ortho,  K_transpose, K_mul, ha, hb, *] at *
+(A ⊗ B).is_ortho := by simp [matrix.is_ortho,  transpose_K, K_mul, ha, hb, *] at *
 end ortho
 
 section perm
@@ -488,6 +499,18 @@ dot_product ((A ⊗ B) a) ((A ⊗ B) b) =
 by rw [dot_product_Kronecker_row', dot_product, dot_product]
 
 end dot_product
+
+
+section sym
+
+lemma is_sym_K_of [has_mul α] {A : matrix I I α} {B : matrix J J α} 
+(ha : A.is_sym) (hb : B.is_sym) : (A ⊗ B).is_sym :=
+begin
+  ext ⟨a, b⟩ ⟨c, d⟩,
+  simp [transpose_K, Kronecker, ha.apply', hb.apply'],
+end
+
+end sym
 /- ## end Kronecker product  -/
 
 end matrix

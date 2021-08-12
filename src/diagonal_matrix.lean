@@ -90,6 +90,11 @@ by {intros i j h, simp *}
 [decidable_eq I] [monoid R] [add_monoid α] [has_one α] [distrib_mul_action R α] (k : R) : 
 (k • (1 : matrix I I α)).is_diagonal := by {intros i j h, simp *}
 
+/-- Matrix `k • A` is diagonal if `A` is. -/
+@[simp] lemma smul_is_diagonal_of [monoid R] [add_monoid α] [distrib_mul_action R α] 
+{k : R} {A : matrix I I α} (ha : A.is_diagonal): 
+(k • A).is_diagonal := by {intros i j h, simp [ha i j h]}
+
 /-- The sum of two diagonal matrices is diagonal. -/
 @[simp] lemma is_diagonal_add [add_zero_class α] {A B : matrix I I α} (ha : A.is_diagonal) (hb : B.is_diagonal) :
 (A + B).is_diagonal := by {intros i j h, simp *, rw [ha i j h, hb i j h], simp}
@@ -151,7 +156,7 @@ begin
 end
 
 /-- `(A ⊗ B).is_diagonal` if both `A` and `B` are diagonal. -/
-lemma Kronecker_prod_is_diagonal_of_both_are_diagonal [mul_zero_class α]
+lemma K_is_diagonal_of [mul_zero_class α]
 {A : matrix I I α} {B : matrix J J α} (ga: A.is_diagonal) (gb: B.is_diagonal): 
 (A ⊗ B).is_diagonal := 
 begin

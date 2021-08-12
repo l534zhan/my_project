@@ -104,6 +104,8 @@ section all_one_matrix
 /-- `matrix.all_one` is the matrix whose entries are all `1`s. -/
 def all_one [has_one α]: matrix I J α := λ i, 1
 
+localized "notation 𝟙 := matrix.all_one" in matrix
+
 /-- `matrix.row sum A i` is the sum of entries of the row indexed by `i` of matrix `A`. -/
 def row_sum [add_comm_monoid α] (A : matrix I J α) (i : I) := ∑ j, A i j
 
@@ -111,7 +113,7 @@ def row_sum [add_comm_monoid α] (A : matrix I J α) (i : I) := ∑ j, A i j
 def col_sum [add_comm_monoid α] (A : matrix I J α) (j : J) := ∑ i, A i j
 
 lemma col_one_mul_row_one [non_assoc_semiring α] : 
-col (1 : I → α) ⬝ row (1 : I → α) = all_one :=
+col (1 : I → α) ⬝ row (1 : I → α) = 𝟙 :=
 by ext; simp [matrix.mul, all_one]
 
 lemma row_one_mul_col_one [non_assoc_semiring α] : 
