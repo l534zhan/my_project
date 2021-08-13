@@ -17,7 +17,7 @@ This file contains the definition and basic results about circulant matrices.
 ## Implementation notes
 
 `fin.foo` is the `fin n` version of `foo`. 
-Namly, the index type of the cirluant matrices in discussion is `fin n`.
+Namely, the index type of the circulant matrices in discussion is `fin n`.
 
 ## Tags
 
@@ -34,10 +34,11 @@ open_locale matrix big_operators
 def cir [has_sub I] (v : I → α) : matrix I I α
 | i j := v (i - j)
 
-/-- When the index type `I` is an `add_group`, the 0th column of `cir v` is `v`. -/
+/-- When `I` is an `add_group`, the 0th column of `cir v` is `v`. -/
 lemma cir_col_zero_eq [add_group I] (v : I → α) :
 (λ i, (cir v) i 0) = v := by ext; simp [cir]
 
+/-- When `I` is an `add_group`, `cir v = cir w ↔ v = w`. -/
 lemma cir_ext_iff [add_group I] {v w : I → α} :
 cir v = cir w ↔ v = w :=
 begin
@@ -166,9 +167,11 @@ begin
   convert cir_is_sym_ext_iff,
 end
 
+/-- If `cir v` is symmetric, `∀ i j : I, v (j - i) = v (i - j)`. -/
 lemma cir_is_sym_apply' [has_sub I] {v : I → α} (h : (cir v).is_sym) (i j : I) : 
 v (j - i) = v (i - j) := cir_is_sym_ext_iff'.1 h i j
 
+/-- If `cir v` is symmetric, `∀ i j : I, v (- i) = v i`. -/
 lemma cir_is_sym_apply [add_group I] {v : I → α} (h : (cir v).is_sym) (i : I) : 
 v (-i) = v i := cir_is_sym_ext_iff.1 h i
 
