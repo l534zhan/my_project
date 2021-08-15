@@ -130,10 +130,12 @@ def mismatched (H : matrix I I ℚ) (i₁ i₂ : I) : set I :=
 
 section set
 
+/-- `matched H i₁ i₂ ∪ mismatched H i₁ i₂ = I` as sets -/
 @[simp] lemma match_union_mismatch (H : matrix I I ℚ) (i₁ i₂ : I) :
 matched H i₁ i₂ ∪ mismatched H i₁ i₂ = @set.univ I :=
 set.union_compl' _ 
 
+/-- a variant of `match_union_mismatch` -/
 @[simp] lemma match_union_mismatch' (H : matrix I I ℚ) (i₁ i₂ : I) :
 {j : I | H i₁ j = H i₂ j} ∪ {j : I | ¬H i₁ j = H i₂ j} = @set.univ I :=
 begin
@@ -141,6 +143,7 @@ begin
   simp* at *,
 end
 
+/-- `matched H i₁ i₂ ∪ mismatched H i₁ i₂ = I` as finsets -/
 lemma match_union_mismatch_finset [decidable_eq I] (H : matrix I I ℚ) (i₁ i₂ : I) :
 (matched H i₁ i₂).to_finset ∪ (mismatched H i₁ i₂).to_finset = @univ I _:=
 begin
@@ -148,14 +151,18 @@ begin
   congr, simp
 end
 
+/-- `matched H i₁ i₂` and `mismatched H i₁ i₂` are disjoint as sets -/
 @[simp] lemma disjoint_match_mismatch (H : matrix I I ℚ) (i₁ i₂ : I) :
 disjoint (matched H i₁ i₂) (mismatched H i₁ i₂) :=
 set.disjoint_of_compl' _
 
+/-- `matched H i₁ i₂` and `mismatched H i₁ i₂` are disjoint as finsets -/
 @[simp] lemma match_disjoint_mismatch_finset [decidable_eq I] (H : matrix I I ℚ) (i₁ i₂ : I) :
 disjoint (matched H i₁ i₂).to_finset (mismatched H i₁ i₂).to_finset :=
 by simp [set.to_finset_disjoint_iff]
 
+/-- `|I| = |H.matched i₁ i₂| + |H.mismatched i₁ i₂|`
+    for any rows `i₁` `i₂` of a matrix `H` with index type `I`-/
 lemma card_match_add_card_mismatch [decidable_eq I] (H : matrix I I ℚ) (i₁ i₂ : I) :
 set.card (@set.univ I) = set.card (matched H i₁ i₂) + set.card (mismatched H i₁ i₂) :=
 set.card_disjoint_union' (disjoint_match_mismatch _ _ _) (match_union_mismatch _ _ _)
@@ -335,6 +342,7 @@ lemma card_mismatch_eq {i₁ i₂ : I} (h: i₁ ≠ i₂):
 (set.card (mismatched H i₁ i₂) : ℚ) = - ∑ j in (mismatched H i₁ i₂).to_finset, H i₁ j * H i₂ j :=
 by {rw [←neg_card_mismatch_eq]; simp* at *}
 
+/-- `|H.matched i₁ i₂| = |H.mismatched i₁ i₂|` as rational numbers if `H` is a Hadamard matrix.-/
 lemma card_match_eq_card_mismatch_ℚ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 (set.card (matched H i₁ i₂) : ℚ)= set.card (mismatched H i₁ i₂) :=
 begin
@@ -344,7 +352,8 @@ begin
   linarith,
 end
 
-lemma card_match_eq_card_mismatch_ℕ [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
+/-- `|H.matched i₁ i₂| = |H.mismatched i₁ i₂|` if `H` is a Hadamard matrix.-/
+lemma card_match_eq_card_mismatch [decidable_eq I] {i₁ i₂ : I} (h: i₁ ≠ i₂): 
 set.card (matched H i₁ i₂) = set.card (mismatched H i₁ i₂) :=
 by have h := card_match_eq_card_mismatch_ℚ H h; simp * at *
 
@@ -1429,72 +1438,93 @@ end order_92
 section order
 open matrix Hadamard_matrix
 
-theorem Hadamard_matrix.order_constraint [decidable_eq I] (H : matrix I I ℚ) [Hadamard_matrix H] 
+theorem Hadamard_matrix.order_constraint 
+[decidable_eq I] (H : matrix I I ℚ) [Hadamard_matrix H] 
 : card I ≥ 3 →  4 ∣ card I := 
 begin
-  intros h, 
+  intros h, -- h: card I ≥ 3
+  -- pick three distinct rows i₁, i₂, i₃
   obtain ⟨i₁, i₂, i₃, ⟨h₁₂, h₁₃, h₂₃⟩⟩:= pick_elements h,
+  -- the cardinalities of J₁, J₂, J₃, J₄ are denoted as i, j, k, l in the proof in words
   set J₁ := {j : I | H i₁ j = H i₂ j ∧ H i₂ j = H i₃ j},
   set J₂ := {j : I | H i₁ j = H i₂ j ∧ H i₂ j ≠ H i₃ j},
   set J₃ := {j : I | H i₁ j ≠ H i₂ j ∧ H i₁ j = H i₃ j},
   set J₄ := {j : I | H i₁ j ≠ H i₂ j ∧ H i₂ j = H i₃ j},
+  -- dₘₙ proves Jₘ Jₙ are disjoint
   have d₁₂: disjoint J₁ J₂, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros, linarith},
+  {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros, linarith},
   have d₁₃: disjoint J₁ J₃, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
+  {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₁₄: disjoint J₁ J₄, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
+  {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₂₃: disjoint J₂ J₃, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
+  {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₂₄: disjoint J₂ J₄, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
+  {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, exact c a},
   have d₃₄: disjoint J₃ J₄, 
-    {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, 
-    have : H i₁ x = H i₂ x, {linarith}, exact c this},
+  {simp [set.disjoint_iff_inter_eq_empty], ext, simp, intros a b c d, 
+  have : H i₁ x = H i₂ x, {linarith}, exact c this},
+  -- u₁₂ proves J₁ ∪ J₂ = matched H i₁ i₂
   have u₁₂: J₁.union J₂ = matched H i₁ i₂, 
-    {ext, simp [J₁, J₂, matched, set.union], tauto},
+  {ext, simp [J₁, J₂, matched, set.union], tauto},
+  -- u₁₃ proves J₁ ∪ J₃ = matched H i₁ i₃
   have u₁₃: J₁.union J₃ = matched H i₁ i₃, 
-    {ext, simp [J₁, J₃, matched, set.union], by_cases g : H i₁ x = H i₂ x; simp [g]},
+  {ext, simp [J₁, J₃, matched, set.union], by_cases g : H i₁ x = H i₂ x; simp [g]},
+  -- u₁₄ proves J₁ ∪ J₄ = matched H i₂ i₃
   have u₁₄: J₁.union J₄ = matched H i₂ i₃, 
-    {ext, simp [J₁, J₄, matched, set.union], tauto},
+  {ext, simp [J₁, J₄, matched, set.union], tauto},
+  -- u₂₃ proves J₂ ∪ J₃ = mismatched H i₂ i₃
   have u₂₃: J₂.union J₃ = mismatched H i₂ i₃, 
-    { ext, simp [J₂, J₃, mismatched, set.union], 
-      by_cases g₁ : H i₂ x = H i₃ x; simp [g₁], 
-      by_cases g₂ : H i₁ x = H i₂ x; simp [g₁, g₂],
-      exact entry_eq_entry_of (ne.symm g₂) g₁ },
+  { ext, simp [J₂, J₃, mismatched, set.union], 
+    by_cases g₁ : H i₂ x = H i₃ x; simp [g₁], 
+    by_cases g₂ : H i₁ x = H i₂ x; simp [g₁, g₂],
+    exact entry_eq_entry_of (ne.symm g₂) g₁ },
+  -- u₂₄ proves J₂ ∪ J₄ = mismatched H i₂ i₄
   have u₂₄: J₂.union J₄ = mismatched H i₁ i₃, 
-    { ext, simp [J₂, J₄, mismatched, set.union], 
-      by_cases g₁ : H i₁ x = H i₂ x; simp [g₁],
-      split, {rintros g₂ g₃, exact g₁ (g₃.trans g₂.symm)},
-      intros g₂, 
-      exact entry_eq_entry_of g₁ g₂ },
+  { ext, simp [J₂, J₄, mismatched, set.union], 
+    by_cases g₁ : H i₁ x = H i₂ x; simp [g₁],
+    split, {rintros g₂ g₃, exact g₁ (g₃.trans g₂.symm)},
+    intros g₂, 
+    exact entry_eq_entry_of g₁ g₂ },
+ -- u₃₄ proves J₃ ∪ J₄ = mismatched H i₁ i₂
   have u₃₄: J₃.union J₄ = mismatched H i₁ i₂,
-    { ext, simp [J₃, J₄, matched, set.union],
-      split; try {tauto},
-      intros g₁, 
-      by_cases g₂ : H i₁ x = H i₃ x,
-      { left, exact ⟨g₁, g₂⟩ },
-      { right, exact ⟨g₁, entry_eq_entry_of g₁ g₂⟩ } },
-  have eq₁ := card_match_eq_card_mismatch_ℕ H h₁₂,
-  have eq₂ := card_match_eq_card_mismatch_ℕ H h₁₃,
-  have eq₃ := card_match_eq_card_mismatch_ℕ H h₂₃,
+  { ext, simp [J₃, J₄, matched, set.union],
+    split; try {tauto},
+    intros g₁, 
+    by_cases g₂ : H i₁ x = H i₃ x,
+    { left, exact ⟨g₁, g₂⟩ },
+    { right, exact ⟨g₁, entry_eq_entry_of g₁ g₂⟩ } },
+  -- eq₁: |H.matched i₁ i₂| = |H.mismatched i₁ i₂|
+  have eq₁ := card_match_eq_card_mismatch H h₁₂,
+  -- eq₂: |H.matched i₁ i₃| = |H.mismatched i₁ i₃|
+  have eq₂ := card_match_eq_card_mismatch H h₁₃,
+  -- eq₃: |H.matched i₂ i₃| = |H.mismatched i₂ i₃|
+  have eq₃ := card_match_eq_card_mismatch H h₂₃,
+  -- eq : |I| = |H.matched i₁ i₂| + |H.mismatched i₁ i₂|
   have eq := card_match_add_card_mismatch H i₁ i₂,
+  -- rewrite eq to |I| = |J₁| + |J₂| + |J₃| + |J₄|, and
+  -- rewrite eq₁ to |J₁| + |J₂| = |J₃| + |J₄|
   rw [set.card_disjoint_union' d₁₂ u₁₂, set.card_disjoint_union' d₃₄ u₃₄] at eq₁ eq,
+  -- rewrite eq₂ to |J₁| + |J₃| = |J₂| + |J₄|
   rw [set.card_disjoint_union' d₁₃ u₁₃, set.card_disjoint_union' d₂₄ u₂₄] at eq₂,
+  -- rewrite eq₃ to |J₁| + |J₄| = |J₂| + |J₄|
   rw [set.card_disjoint_union' d₁₄ u₁₄, set.card_disjoint_union' d₂₃ u₂₃] at eq₃,
+  -- g₂₁, g₃₁, g₄₁ prove that |J₁| = |J₂| = |J₃| = |J₄|
   have g₂₁ : J₂.card = J₁.card, {linarith},
   have g₃₁ : J₃.card = J₁.card, {linarith},
   have g₄₁ : J₄.card = J₁.card, {linarith},
+  -- rewrite eq to |I| = |J₁| + |J₁| + |J₁| + |J₁|
   rw [g₂₁, g₃₁, g₄₁, set.univ_card_eq_fintype_card] at eq,
   use J₁.card,
-  simp [eq],
-  noncomm_ring,
+  simp [eq], noncomm_ring,
 end
 
 theorem Hadamard_matrix.Hadamard_conjecture: 
-∀ k : ℕ, ∃ (I : Type*) (inst : fintype I) 
-(H : @matrix I I inst inst ℚ) (h : @Hadamard_matrix I inst H), 
-by exactI card I = 4 * k := sorry
+∀ k : ℕ, ∃ (I : Type*) [fintype I], 
+by exactI ∃ (H : matrix I I ℚ) [Hadamard_matrix H], 
+card I = 4 * k := 
+sorry -- Here, `sorry` means if you ask me to prove this conjecture, 
+      -- then I have to apologize.
 
 end order
 /- ## end order -/

@@ -11,6 +11,6 @@ example : 1 = 2 := by sorry
 #check H_1'
 #check matrix
 #check unit
-#check punit --universe polymorphic version
+#check punit --universe polymorphic version H i₁ i₂ α β γ 
 
 

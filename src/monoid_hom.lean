@@ -1,5 +1,9 @@
 import group_theory.subgroup
 
+/-!
+This file supplements two instances relavant to monoid homomorphisms
+-/
+
 namespace monoid_hom
 variables {G N: Type*} [group G] [group N] 
 
