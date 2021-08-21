@@ -541,11 +541,12 @@ by replace h:= congr_fun (congr_fun h i) i; simp * at *
 H j i + H i j = 0 :=
 by replace h:= congr_fun (congr_fun h i) j; simp * at *
 
-lemma is_skew.of_neg_one_smul_row_col_of_is_skew 
+lemma is_skew.of_neg_col_row_of_is_skew 
 [decidable_eq I] (i : I) (h : Hadamard_matrix.is_skew H) : 
 is_skew ((H.neg_row i).neg_col i) :=
 begin
   simp [is_skew],
+  -- to show ((H.neg_row i).neg_col i)ᵀ + (H.neg_row i).neg_col i = 2
   nth_rewrite 0 [neg_row_neg_col_comm],
   simp [transpose_neg_row, transpose_neg_col, neg_row_add, neg_col_add],
   rw [h.eq],

@@ -188,16 +188,8 @@ def Kronecker [has_mul α] (A : matrix I J α) (B : matrix K L α) :
 matrix (I × K) (J × L) α :=
 λ ⟨i, k⟩ ⟨j, l⟩, (A i j) * (B k l)
 
+/- an infix notation for the Kronecker product -/
 localized "infix `⊗`:100 := matrix.Kronecker" in matrix
-
-lemma Kronecker_apply [has_mul α] 
-(A : matrix I J α) (B : matrix K L α) (a : I × K) (b : J × L) :
-(A ⊗ B) a b = (A a.1 b.1) * (B a.2 b.2) := 
-begin
-  have ha : a = ⟨a.1, a.2⟩ := by {ext; simp},
-  have hb : b = ⟨b.1, b.2⟩ := by {ext; simp},
-  rw [ha, hb], dsimp [Kronecker], refl
-end
 
 /- The advantage of the following def is that one can directly #eval the Kronecker product of specific matrices-/
 /- ## fin_Kronecker_prodcut  -/
@@ -242,60 +234,33 @@ def ex4:= ![![(8:ℤ), -9, -6, 5], ![1, -3, -4, 7], ![2, 8, -8, -3], ![1, 2, -5,
 end examples
 /- ## end fin_Kronecker_prodcut  -/
 
-section one_K_one
-variables [monoid_with_zero α] [decidable_eq I] [decidable_eq J]
-@[simp] lemma one_K_one : (1 :matrix I I α) ⊗ (1 :matrix J J α) = 1 :=
+lemma Kronecker_apply [has_mul α] 
+(A : matrix I J α) (B : matrix K L α) (a : I × K) (b : J × L) :
+(A ⊗ B) a b = (A a.1 b.1) * (B a.2 b.2) := 
 begin
-  ext ⟨a,b⟩ ⟨c,d⟩,
-  simp [Kronecker],
-  by_cases h: a = c,
-  {by_cases g: b = d; simp* at *},
-  simp* at *,
+  have ha : a = ⟨a.1, a.2⟩ := by {ext; simp},
+  have hb : b = ⟨b.1, b.2⟩ := by {ext; simp},
+  rw [ha, hb], dsimp [Kronecker], refl
 end
-end one_K_one
 
-section transpose
-variables [has_mul α]
-(A : matrix I J α) (B : matrix K L α)
-lemma transpose_K: (A ⊗ B)ᵀ = Aᵀ ⊗ Bᵀ :=
-by ext ⟨a,b⟩ ⟨c,d⟩; simp [transpose, Kronecker]
-end transpose
-
-section neg
-variables [ring α] (A : matrix I J α) (B : matrix K L α)
-@[simp] lemma neg_K: (-A) ⊗ B = - A ⊗ B := by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker]}
-@[simp] lemma K_neg: A ⊗ (-B) = - A ⊗ B := by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker]}
-end neg
-
-section conj_transpose
-open_locale matrix
-variables [comm_monoid α] [star_monoid α] (M₁ : matrix I J α) (M₂ : matrix K L α)
-lemma conj_transpose_K: (M₁ ⊗ M₂)ᴴ = M₁ᴴ ⊗ M₂ᴴ:=
-by ext ⟨a,b⟩ ⟨c,d⟩; simp [conj_transpose,Kronecker, mul_comm]
-end conj_transpose
-
+/- distributivity -/
 section distrib
-
-variables [distrib α] (A : matrix I J α) (B : matrix K L α) (B' : matrix K L α)
-
+variables [distrib α] -- variables are restricted to this section
+variables (A : matrix I J α) (B : matrix K L α) (B' : matrix K L α)
 lemma K_add :A ⊗ (B + B') = A ⊗ B + A ⊗ B' :=
 by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, left_distrib]}
-
 lemma add_K :(B + B') ⊗ A = B ⊗ A + B' ⊗ A :=
 by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, right_distrib]}
-
 end distrib
 
+/- distributivity over substraction -/
 section distrib_sub
-
-variables [ring α] (A : matrix I J α) (B : matrix K L α) (B' : matrix K L α)
-
+variables [ring α] 
+variables (A : matrix I J α) (B : matrix K L α) (B' : matrix K L α)
 lemma K_sub :A ⊗ (B - B') = A ⊗ B - A ⊗ B' :=
 by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, mul_sub]}
-
 lemma sub_K :(B - B') ⊗ A = B ⊗ A - B' ⊗ A :=
 by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker, sub_mul]}
-
 end distrib_sub
 
 /-
@@ -307,12 +272,17 @@ sorry
 end non_comm
 -/
 
-section associativity
-variables [semigroup α]
-variables (A : matrix I J α) (B : matrix K L α) (C : matrix M N α)
-lemma K_assoc : A ⊗ B ⊗ C = A ⊗ (B ⊗ C) :=
+/-- associativity -/
+lemma K_assoc 
+[semigroup α] (A : matrix I J α) (B : matrix K L α) (C : matrix M N α) : 
+A ⊗ B ⊗ C = A ⊗ (B ⊗ C) :=
 by {ext ⟨⟨a1, b1⟩, c1⟩ ⟨⟨a2, b2⟩, c2⟩, simp[Kronecker, mul_assoc], refl}
-end associativity
+
+section check
+variables [semigroup α] (A : matrix I J α) (B : matrix K L α) (C : matrix M N α) 
+
+#check A ⊗ B ⊗ C = ↑(A ⊗ (B ⊗ C))
+end check
 
 section zero
 variables [mul_zero_class α] (A : matrix I J α)
@@ -326,6 +296,41 @@ by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker]}
 zero_K A
 end zero
 
+/-- `1 ⊗ 1 = 1`. 
+    The Kronecker product of two identity matrices is an identity matrix. -/
+@[simp] lemma one_K_one 
+[monoid_with_zero α] [decidable_eq I] [decidable_eq J] : 
+(1 :matrix I I α) ⊗ (1 :matrix J J α) = 1 :=
+begin
+  ext ⟨a,b⟩ ⟨c,d⟩,
+  simp [Kronecker],
+  by_cases h: a = c,
+  {by_cases g: b = d; simp* at *},
+  simp* at *,
+end
+
+section neg
+variables [ring α] 
+variables (A : matrix I J α) (B : matrix K L α)
+@[simp] lemma neg_K: (-A) ⊗ B = - A ⊗ B := by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker]}
+@[simp] lemma K_neg: A ⊗ (-B) = - A ⊗ B := by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker]}
+end neg
+
+/- scalar multiplication -/
+section scalar
+variables [has_mul α] [has_scalar R α] [is_scalar_tower R α α] [smul_comm_class R α α]
+variables (k : R) (A : matrix I J α) (B : matrix K L α)
+private lemma aux_smul_mul_assoc' (x y : α) :
+(k • x) * y = k • (x * y) := smul_assoc k x y
+private  lemma aux_mul_smul_comm' (x y : α) :
+x * (k • y) = k • (x * y) := (smul_comm k x y).symm
+@[simp] lemma smul_K : (k • A) ⊗ B = k • A ⊗ B :=
+  by ext ⟨a,b⟩ ⟨c,d⟩; simp [Kronecker, aux_smul_mul_assoc']
+@[simp] lemma K_smul : A ⊗ (k • B) = k • A ⊗ B :=
+  by ext ⟨a,b⟩ ⟨c,d⟩; simp [Kronecker, aux_mul_smul_comm']
+end scalar
+
+/- Kronecker product mixes matrix multiplication -/
 section Kronecker_mul
 variables [comm_ring α]
 variables
@@ -342,10 +347,11 @@ begin
   ring,
 end
 variables [decidable_eq I] [decidable_eq M] [decidable_eq L] [decidable_eq J]
-@[simp] lemma id_K_mul: (1 ⊗ B) ⬝ (A ⊗ 1) = A ⊗ B := by simp [K_mul]
-@[simp] lemma K_id_mul: (A ⊗ 1) ⬝ (1 ⊗ B) = A ⊗ B := by simp [K_mul]
+@[simp] lemma one_K_mul: (1 ⊗ B) ⬝ (A ⊗ 1) = A ⊗ B := by simp [K_mul]
+@[simp] lemma K_one_mul: (A ⊗ 1) ⬝ (1 ⊗ B) = A ⊗ B := by simp [K_mul]
 end Kronecker_mul
 
+/- Kronecker product mixes Hadamard product -/
 section Kronecker_Hadamard
 variables [comm_semigroup α]
 (A : matrix I J α) (C : matrix I J α)
@@ -361,18 +367,15 @@ begin
 end
 end Kronecker_Hadamard
 
-section scalar
-variables [has_mul α] [has_scalar R α] [is_scalar_tower R α α] [smul_comm_class R α α]
-variables (k : R) (A : matrix I J α) (B : matrix K L α)
-private lemma aux_smul_mul_assoc' (x y : α) :
-(k • x) * y = k • (x * y) := smul_assoc k x y
-private  lemma aux_mul_smul_comm' (x y : α) :
-x * (k • y) = k • (x * y) := (smul_comm k x y).symm
-@[simp] lemma smul_K : (k • A) ⊗ B = k • A ⊗ B :=
-  by ext ⟨a,b⟩ ⟨c,d⟩; simp [Kronecker, aux_smul_mul_assoc']
-@[simp] lemma K_smul : A ⊗ (k • B) = k • A ⊗ B :=
-  by ext ⟨a,b⟩ ⟨c,d⟩; simp [Kronecker, aux_mul_smul_comm']
-end scalar
+lemma transpose_K 
+[has_mul α] (A : matrix I J α) (B : matrix K L α): 
+(A ⊗ B)ᵀ = Aᵀ ⊗ Bᵀ :=
+by ext ⟨a,b⟩ ⟨c,d⟩; simp [transpose, Kronecker]
+
+lemma conj_transpose_K
+[comm_monoid α] [star_monoid α] (M₁ : matrix I J α) (M₂ : matrix K L α) : 
+(M₁ ⊗ M₂)ᴴ = M₁ᴴ ⊗ M₂ᴴ:=
+by ext ⟨a,b⟩ ⟨c,d⟩; simp [conj_transpose,Kronecker, mul_comm]
 
 section trace
 variables [semiring β] [non_unital_non_assoc_semiring α] [module β α]
@@ -404,6 +407,7 @@ def Kronecker.invertible_of_invertible [invertible A] [invertible B] : invertibl
 
 @[simp] lemma Kronecker.unit_of_unit (ha : is_unit A) (hb : is_unit B) : is_unit (A ⊗ B) :=
 @is_unit_of_invertible _ _ (A ⊗ B) (@Kronecker.invertible_of_invertible _ _ _ _ _ _ _ _ A B (is_unit.invertible ha) (is_unit.invertible hb))
+
 end inverse
 
 section symmetric
@@ -503,6 +507,7 @@ end dot_product
 
 section sym
 
+/-- `A ⊗ B` is symmetric if `A` and `B` are symmetric. -/
 lemma is_sym_K_of [has_mul α] {A : matrix I I α} {B : matrix J J α} 
 (ha : A.is_sym) (hb : B.is_sym) : (A ⊗ B).is_sym :=
 begin
