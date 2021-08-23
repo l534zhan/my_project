@@ -3,7 +3,7 @@ Copyright (c) 2021 Lu-Ming Zhang. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: Lu-Ming Zhang.
 -/
-import tactic
+import tactic.gptf
 import data.finset.basic
 import data.fintype.card
 
@@ -126,7 +126,9 @@ by simp [*, ← finset.prod_union]
 lemma set.prod_union' [decidable_eq α] {S T U : set α} {f : α → β} 
 [fintype ↥S] [fintype ↥T] [fintype ↥U]
 (d : disjoint S T) (u : S ∪ T = U):
-(∏ x in U.to_finset, f x) = (∏ x in S.to_finset, f x) * (∏ x in T.to_finset, f x) :=
+(∏ x in U.to_finset, f x) = 
+(∏ x in S.to_finset, f x) * 
+(∏ x in T.to_finset, f x) :=
 begin
   have d' := set.to_finset_disjoint_iff.2 d,
   have u' := set.to_finset_union_eq_iff.2 u,
@@ -144,14 +146,56 @@ end
 
 attribute [to_additive] fintype.prod_dite
 
-lemma fintype.sum_split {α} {β} [fintype α] [add_comm_monoid β] {f : α → β} (p : α → Prop) [decidable_pred p] :
+lemma fintype.sum_split {α} {β} [fintype α] [add_comm_monoid β] 
+{f : α → β} (p : α → Prop) [decidable_pred p] :
   ∑ j, f j =
-    ∑ j : {j : α // p j}, f j + ∑ j : {j : α //¬ p j}, f j :=
+  ∑ j : {j : α // p j}, f j + 
+  ∑ j : {j : α //¬ p j}, f j :=
 by simp [←fintype.sum_dite (λ a _, f a) (λ a _, f a)]
 
-lemma finset.sum_split {α} {β} [add_comm_monoid β] (s : finset α) {f : α → β} (p : α → Prop) [decidable_pred p] :
+lemma fintype.sum_split' {α} {β} [fintype α] [add_comm_monoid β] 
+{f : α → β} (p q : α → Prop) [decidable_pred p] [decidable_pred q] :
+  ∑ j : {j : α // p j}, f j =
+  ∑ j : {j : α // p j ∧ q j}, f j + 
+  ∑ j : {j : α // p j ∧ ¬ q j}, f j :=
+begin
+  set q': (subtype p) → Prop := λ a, q (a.1),
+  simp [fintype.sum_split q'],
+  suffices h₁ : ∑ (j : {j // q' j}), f j = ∑ (j : {j // p j ∧ q j}), f j,
+  suffices h₂ : ∑ (j : {j // ¬q' j}), f j = ∑ (j : {j // p j ∧ ¬q j}), f j,
+  simp [←h₁, ←h₂],
+  set g : {j // ¬q' j} → {j // p j ∧ ¬q j} := λ a, ⟨a.1.1, by tidy⟩,
+  swap 2,
+  set g : {j // q' j} → {j // p j ∧ q j} := λ a, ⟨a.1.1, by tidy⟩,
+  any_goals 
+  { have hg : function.bijective g := 
+      ⟨λ a b hab, by tidy, λ a, by tidy⟩,
+    convert function.bijective.sum_comp hg _,
+    ext, congr' 1 },
+end
+
+lemma fintype.card_split {α} [fintype α] 
+(p : α → Prop) [decidable_pred p] :
+  fintype.card α =
+  fintype.card {j : α // p j} + 
+  fintype.card {j : α // ¬ p j} :=
+by simp only [fintype.card_eq_sum_ones, fintype.sum_split p]
+
+lemma fintype.card_split' {α} [fintype α]
+(p q : α → Prop) [decidable_pred p] [decidable_pred q]:
+  fintype.card {j : α // p j} =
+  fintype.card {j : α // p j ∧ q j} + 
+  fintype.card {j : α // p j ∧ ¬ q j} :=
+begin
+  have eq:= @fintype.sum_split' _ _ _ _ (λ _, 1) p q _ _,
+  simp[*, fintype.card_eq_sum_ones] at *,
+end
+
+lemma finset.sum_split {α} {β} [add_comm_monoid β] 
+(s : finset α) {f : α → β} (p : α → Prop) [decidable_pred p] :
   ∑ j in s, f j =
-    ∑ j in filter p s, f j + ∑ j in filter (λ (x : α), ¬p x) s, f j :=
+  ∑ j in filter p s, f j + 
+  ∑ j in filter (λ (x : α), ¬p x) s, f j :=
 by simp [←finset.sum_ite (λ j, f j) (λ j, f j)]
 
 @[simp]

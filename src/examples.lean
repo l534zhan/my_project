@@ -1,6 +1,7 @@
 import tactic.gptf
 import data.matrix.basic
 import data.complex.basic
+import field_theory.finite.basic
 
 section sec1
 
@@ -240,5 +241,54 @@ variables (I α : Type*) [fintype I]
 variables [decidable_eq I] [has_zero α] [has_one α]
 #check matrix.has_one
 #check (1 : matrix I I α)
+
+#check semigroup
+
+/-
+class has_one      (α : Type u) := (one : α)
+
+class has_mul      (α : Type u) := (mul : α → α → α)
+
+class semigroup (G : Type u) extends has_mul G :=
+(mul_assoc : ∀ a b c : G, a * b * c = a * (b * c))
+
+class mul_one_class (M : Type u) extends has_one M, has_mul M :=
+(one_mul : ∀ (a : M), 1 * a = a)
+(mul_one : ∀ (a : M), a * 1 = a)
+
+class monoid (M : Type u) extends semigroup M, mul_one_class M :=
+(npow : ℕ → M → M := npow_rec)
+(npow_zero' : ∀ x, npow 0 x = 1 . try_refl_tac)
+(npow_succ' : ∀ (n : ℕ) x, npow n.succ x = x * npow n x . try_refl_tac)
+-/
+
+/-
+lemma simple {a : ℕ} (h : a ∣ 4) : a = 1 ∨ a = 2 ∨ a = 4 :=
+begin
+  dec_trivial
+end
+-/
+
+example (a : ℕ) (h : a > 0) : a = a - 1 + 1 := by rw nat.sub_add_cancel h
+
+-- rw fintype.card_eq,
+example {F : Type*} [fintype F] [has_zero F] [decidable_eq F] : 
+fintype.card {a : F // a = 0} = 1 := 
+begin
+  simp [fintype.card_eq_one_iff],
+  /-
+  have h: fintype.card {a : F // a = 0} = fintype.card ({0} : set F),
+  { rw fintype.card_eq,
+    have eq : {a:F // a = 0} ≃ ({0} : set F), 
+    { refine {..},
+      exact λ a : {a:F // a = 0}, by tidy,
+      exact λ a : ({0} : set F), by tidy,
+      tidy,
+      
+    },
+    exact ⟨eq⟩,},
+  simp [h],
+  -/
+end
 
 
