@@ -62,7 +62,7 @@ local notation `q` := fintype.card F -- declares `q` as a notation
 /- ## basic -/
 section basic
 
-/-- `|F| = |units F| + 1` -/
+/-- `|F| = |units F| + 1`. The `+` version of `finite_field.card_units`. -/
 lemma card_units' : 
 fintype.card F = fintype.card (units F) + 1 :=
 begin
@@ -81,7 +81,7 @@ begin
   exact (nat.prime_dvd_prime_iff_eq g₁ h₁).1 g₂,
 end
 
-lemma char_ne_two :
+lemma char_ne_two_of :
 q ≡ 1 [MOD 4] ∨ q ≡ 3 [MOD 4] → p ≠ 2 :=
 begin
   obtain ⟨n, p_prime, g⟩:= finite_field.card F p,
@@ -106,11 +106,11 @@ begin
   { have g := eq_add_of_sub_eq h, rw ← g at this, revert this, dec_trivial }, 
 end
 
-lemma char_ne_two' : 
+lemma char_ne_two_of' : 
 q ≡ 3 [MOD 4] → p ≠ 2 ∧ ¬ q ≡ 1 [MOD 4] :=
 begin
   intros h,
-  refine ⟨char_ne_two p (or.inr h), _⟩,
+  refine ⟨char_ne_two_of p (or.inr h), _⟩,
   intro h',
   have g := h'.symm.trans  h,
   simp [nat.modeq_iff_dvd] at g,
@@ -137,7 +137,7 @@ end
 variables {p}
 
 /-- If the character of `F` is not `2`, `-1` is not equal to `1` in `F`. -/
-lemma neg_one_ne_one_of_char_ne_2 (hp: p ≠ 2) : (-1 : F) ≠ 1 :=
+lemma neg_one_ne_one_of (hp: p ≠ 2) : (-1 : F) ≠ 1 :=
 begin
   intros h,
   have h' := calc ↑(2 : ℕ) = (2 : F)     : by simp
@@ -149,8 +149,8 @@ begin
 end
 
 /-- If the character of `F` is not `2`, `-1` is not equal to `1` in `units F`. -/
-lemma neg_one_ne_one_of_char_ne_2' (hp: p ≠ 2) : (-1 : units F) ≠ 1 := 
-by simp [units.ext_iff]; exact neg_one_ne_one_of_char_ne_2 hp
+lemma neg_one_ne_one_of' (hp: p ≠ 2) : (-1 : units F) ≠ 1 := 
+by simp [units.ext_iff]; exact neg_one_ne_one_of hp
 
 /-- For `x : F`, `x^2 = 1 ↔ x = 1 ∨ x = -1`. -/
 lemma sq_eq_one_iff_eq_one_or_eq_neg_one (x : F) :
@@ -185,7 +185,7 @@ begin
     resetI, -- resets the instance cache.
     convert order_of_eq_prime hx _,
     rw h,
-    exact neg_one_ne_one_of_char_ne_2 hp }
+    exact neg_one_ne_one_of hp }
 end
 
 /-- The "units" version of `order_of_eq_two_iff`. -/
@@ -200,7 +200,7 @@ begin
 end
 
 /-- `-1` is a square in `units F` iff the cardinal `q ≡ 1 [MOD 4]`. -/
-theorem neg_one_eq_sq_iff_card_eq_one_mod_four' (hp: p ≠ 2) : 
+theorem neg_one_eq_sq_iff' (hp: p ≠ 2) : 
 (∃ a : units F, -1 = a^2) ↔ q ≡ 1 [MOD 4] :=
 begin
   -- rewrites the RHS to `4 ∣ fintype.card (units F)`
@@ -218,13 +218,13 @@ begin
     -- g₁ : a ≠ 1
     have g₁ : a ≠ 1, 
     { rintro rfl, simp at h',
-      exact absurd h' (neg_one_ne_one_of_char_ne_2' hp) },
+      exact absurd h' (neg_one_ne_one_of' hp) },
     -- h₁ : order_of a ≠ 1
     have h₁ := mt order_of_eq_one_iff.1 g₁, 
     -- g₂ : a ≠ -1
     have g₂ : a ≠ -1, 
     { rintro rfl, simp [pow_two] at h', 
-      exact absurd h' (neg_one_ne_one_of_char_ne_2' hp) },
+      exact absurd h' (neg_one_ne_one_of' hp) },
     -- h₂ : order_of a ≠ 2 
     have h₂ := mt (order_of_eq_two_iff' hp a).1 g₂,
     -- ha : order_of a = 4
@@ -245,21 +245,22 @@ begin
     rcases hg with (hg | hg), -- splits into two cases
     -- case `g ^ (k * 2) = 1`
     { have hk₁ := card_pos_iff.mpr ⟨(1 : units F)⟩, 
-      rw hF at hk₁,
       have o₁ := order_of_eq_card_of_forall_mem_gpowers hg',
       have o₂ := order_of_dvd_of_pow_eq_one hg,
       have le := nat.le_of_dvd (by linarith) o₂,
-      rw [o₁, hF] at le,
+      rw [o₁, hF] at *,
       exfalso, linarith },
     -- case `g ^ (k * 2) = -1`
     { use g ^ k, simp [← hg, pow_mul] } },
 end
 
+#check subgroup.gpowers
+
 /-- `-1` is a square in `F` iff the cardinal `q ≡ 1 [MOD 4]`. -/
-lemma neg_one_eq_sq_iff_card_eq_one_mod_four (hp: p ≠ 2) : 
+lemma neg_one_eq_sq_iff (hp: p ≠ 2) : 
 (∃ a : F, -1 = a^2) ↔ fintype.card F ≡ 1 [MOD 4] :=
 begin
-  rw [←neg_one_eq_sq_iff_card_eq_one_mod_four' hp],
+  rw [←neg_one_eq_sq_iff' hp],
   -- the current goal is
   -- `(∃ (a : F), -1 = a ^ 2) ↔ ∃ (a : units F), -1 = a ^ 2`
   split, -- splits into two directions
@@ -306,48 +307,92 @@ by {unfold is_quad_residue, apply_instance}
 instance [decidable_eq F] (a : F) : decidable (is_non_residue a) := 
 by {unfold is_non_residue, apply_instance}
 
+variables {F p}
+
+lemma not_residue_iff_is_non_residue 
+{a : F} (h : a ≠ 0) : 
+¬ is_quad_residue a ↔ is_non_residue a :=
+by simp [is_quad_residue, is_non_residue, *] at *
+
 lemma is_non_residue_of_not_residue 
 {a : F} (h : a ≠ 0) (g : ¬ is_quad_residue a) : 
 is_non_residue a :=
+(not_residue_iff_is_non_residue h).1 g
+
+lemma not_non_residue_iff_is_residue 
+{a : F} (h : a ≠ 0) : 
+¬ is_non_residue a ↔ is_quad_residue a :=
 by simp [is_quad_residue, is_non_residue, *] at *
 
-/-
-Can keep this.
+lemma is_residue_of_not_non_residue 
+{a : F} (h : a ≠ 0) (g : ¬ is_non_residue a) : 
+is_quad_residue a :=
+(not_non_residue_iff_is_residue h).1 g
 
-variables (F)
+lemma residue_or_non_residue 
+{a : F} (h : a ≠ 0) :
+is_quad_residue a ∨  is_non_residue a :=
+begin
+  by_cases g: is_quad_residue a,
+  exact or.inl g,
+  exact or.inr (is_non_residue_of_not_residue h g),
+end
 
-/-- The subtype of `F` containing quadratic residues. -/
-def quad_residues := {a : F // is_quad_residue a}
-/-- The set containing quadratic residues of `F`. -/
-def quad_residues_set [decidable_eq F] := {a : F | is_quad_residue a}
+/-- `-1` is a residue if `q ≡ 1 [MOD 4]`. -/
+lemma neg_one_is_residue_of (hF : q ≡ 1 [MOD 4]) :
+is_quad_residue (-1 : F) := 
+begin
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
+  resetI, -- resets the instance cache
+  have hp := char_ne_two_of p (or.inl hF), -- hp: p ≠ 2
+  have h := (neg_one_eq_sq_iff hp).2 hF, -- h : -1 is a square
+  refine ⟨by tidy, h⟩
+end
 
-/-- The subtype of `F` containing quadratic non-residues. -/
-def non_residues := {a : F // is_non_residue a}
-/-- The set containing quadratic non-residues of `F`. -/
-def non_residues_set [decidable_eq F] := {a : F | is_non_residue a}
+/-- `-1` is a non-residue if `q ≡ 3 [MOD 4]`. -/
+lemma neg_one_is_non_residue_of (hF : q ≡ 3 [MOD 4]) :
+is_non_residue (-1 : F) := 
+begin
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
+  resetI, -- resets the instance cache
+  -- hp: p ≠ 2, hF': ¬fintype.card F ≡ 1 [MOD 4]
+  obtain ⟨hp, hF'⟩ := char_ne_two_of' p hF,
+  -- h: ¬∃ (a : F), -1 = a ^ 2
+  have h := mt (neg_one_eq_sq_iff hp).1 hF',
+  refine ⟨by tidy, h⟩
+end
 
-instance [decidable_eq F] : fintype (quad_residues F) := 
-by {unfold quad_residues, apply_instance}
+variable (F)
 
-instance [decidable_eq F] : fintype (non_residues F) := 
-by {unfold non_residues, apply_instance}
--/
+@[simp] lemma eq_residues : 
+{j // ¬j = 0 ∧ ∃ (b : F), j = b ^ 2} = 
+{a : F // is_quad_residue a} := rfl
 
-variables {F}
+@[simp] lemma eq_non_residues : 
+{j // ¬j = 0 ∧ ¬∃ (x : F), j = x ^ 2} = 
+{a : F // is_non_residue a} := rfl
 
---@[simp] lemma eq_quad_residues :
---{a // (λ (a : F), a ≠ 0) a ∧ (λ (a : F), ∃ (b : F), a = b ^ 2) a} =
---{a : F // is_quad_residue a} := 
---begin
---  sorry
---end
+@[simp] lemma eq_non_residues' : 
+{j // ¬j = 0 ∧ ∀ (x : F), ¬j = x ^ 2} = 
+{a : F // is_non_residue a} := by simp [is_non_residue]
+
+/-- `|F| = 1 + |{a : F // is_quad_residue a}| + |{a : F // is_non_residue a}|` -/
+lemma eq_one_add_card_residues_add_card_non_residues 
+[decidable_eq F]:
+q = 1 + fintype.card {a : F // is_quad_residue a} + 
+        fintype.card {a : F // is_non_residue a} :=
+begin
+  rw [fintype.card_split (λ a : F, a = 0),
+      fintype.card_split' (λ a : F, a ≠ 0) (λ a, ∃ b, a = b^2)],
+  simp [add_assoc],
+end
 
 /- ### sq_function -/
 section sq_function
 
 open quotient_group
 
-variables (F)
+variables (F) -- re-declares `F` as an explicit variable
 
 /-- `sq` is the square function from `units F` to `units F`, 
     defined as a group homomorphism. -/
@@ -362,7 +407,6 @@ begin
   have eq := fintype.card_congr (mul_equiv.to_equiv iso),
   rw [subgroup.card_eq_card_quotient_mul_card_subgroup (sq F).ker, eq]
 end
---by {have h:= sq.iso' F, rwa (sq.card_quotient_ker_eq_card_range F) at h,}
 
 /-- `sq.range_equiv` constructs the natural equivalence between 
     the `(sq F).range` and `{a : F // is_quad_residue a}`. -/
@@ -385,21 +429,18 @@ by apply fintype.card_congr (sq.range_equiv F)
 lemma sq.ker_carrier_eq : 
 (sq F).ker.carrier = {1, -1} :=
 begin
-  rw ker, 
-  simp [subgroup.comap, set.preimage, sq],
+  simp [ker, subgroup.comap, set.preimage, sq],
   ext, simp, 
   convert sq_eq_one_iff_eq_one_or_eq_neg_one' x,
-  simp [pow_two, npow_rec],
+  simp [npow_rec],
 end
 
 lemma sq.card_ker_carrier_eq [decidable_eq F] (hp: p ≠ 2) : 
 fintype.card (sq F).ker.carrier = 2 :=
 begin
   simp [sq.ker_carrier_eq F],
-  convert @set.card_insert _ (1 : units F) {-1} _ _ _,
-  { have g: fintype.card ({-1} : set (units F)) = 1, {simp}, simp [g]},
-  simp [units.ext_iff],
-  exact ne.symm (neg_one_ne_one_of_char_ne_2 hp),
+  convert @set.card_insert _ (1 : units F) {-1} _ _ _; simp,
+  exact ne.symm (neg_one_ne_one_of' hp),
 end
 
 /-- `|(sq F).ker| = 2` if `p ≠ 2` -/
@@ -423,33 +464,44 @@ theorem card_residues_eq_card_non_residues
 fintype.card {a : F // is_quad_residue a} = 
 fintype.card {a : F // is_non_residue a} :=
 begin
-  have eq := fintype.card_split (λ a : F, a = 0),
-  rw [fintype.card_split' (λ a : F, a ≠ 0) (λ a, ∃ b, a = b^2)] at eq,
-  dsimp at eq,
-  have h₁ : {j // j ≠ 0 ∧ ∃ (b : F), j = b ^ 2} = 
-           {a : F // is_quad_residue a} := rfl,
-  have h₂ : {j // j ≠ 0 ∧ ¬ ∃ (b : F), j = b ^ 2} = 
-           {a : F // is_non_residue a} := rfl,
-  have g : fintype.card {a : F // a = 0} = 1 := by simp,
-  simp only [h₁, h₂, g, card_units',
-             card_units_eq_card_residues_mul_two F hp] at eq,
-  linarith,
+  have eq := eq_one_add_card_residues_add_card_non_residues F,
+  simp [card_units', card_units_eq_card_residues_mul_two F hp] at eq,
+  linarith
 end
+/- `card_units_eq_card_residues_mul_two F hp` is a built API that proves
+   `|F| = 1 + |{a : F // is_quad_residue a}| + |{a : F // is_non_residue a}|` -/
 
 /-- unfolded version of `card_residues_eq_card_non_residues` -/
 theorem card_residues_eq_card_non_residues'
 [decidable_eq F] (hp : p ≠ 2):
 (@univ {a : F // is_quad_residue a} _).card = 
 (@univ {a : F // is_non_residue a} _).card :=
+by convert card_residues_eq_card_non_residues F hp
+
+
+variable {F} -- re-declares `F` as an implicit variable
+
+example : (0 : F)⁻¹ = 0 := by simp
+
+/-- `a⁻¹` is a residue if and only if `a` is. -/
+theorem inv_is_residue_iff {a : F} : 
+is_quad_residue a⁻¹ ↔ is_quad_residue a := 
 begin
-  have eq := card_residues_eq_card_non_residues F hp,
-  simp [fintype.card] at eq,
-  assumption
+  split, -- splits into two directions
+  any_goals {rintro ⟨h, b, g⟩, refine ⟨by tidy, b⁻¹, by simp [←g]⟩},
 end
 
-variable {F}
+/-- `a⁻¹` is a non residue if and only if `a` is. -/
+theorem inv_is_non_residue_iff {a : F} : 
+is_non_residue a⁻¹ ↔ is_non_residue a := 
+begin
+  by_cases h : a = 0,
+  {simp* at *}, -- when `a = 0`
+  have h' : a⁻¹ ≠ 0 := by simp [h],
+  simp [←not_residue_iff_is_non_residue, *, inv_is_residue_iff]
+end
 
-theorem residue_mul_residue_is_residue [decidable_eq F]
+theorem residue_mul_residue_is_residue
 {a b : F} (ha : is_quad_residue a) (hb : is_quad_residue b) : 
 is_quad_residue (a * b) :=
 begin
@@ -459,64 +511,71 @@ begin
   ring
 end
 
-theorem non_residue_mul_residue_is_non_residue [decidable_eq F]
-{b a : F} (hb : is_non_residue b) (ha : is_quad_residue a) : 
-is_non_residue (b * a) :=
+theorem non_residue_mul_residue_is_non_residue
+{a b : F} (ha : is_non_residue a) (hb : is_quad_residue b) : 
+is_non_residue (a * b) :=
 begin
-  obtain ⟨ha, c, rfl⟩ := ha,
-  refine ⟨mul_ne_zero hb.1 ha, _⟩,
+  obtain ⟨hb, c, rfl⟩ := hb,
+  refine ⟨mul_ne_zero ha.1 hb, _⟩,
   rintro ⟨d, h⟩,
-  convert hb.2 ⟨(c⁻¹ * d), _⟩,
+  convert ha.2 ⟨(d * c⁻¹), _⟩,
   field_simp [← h],
 end
 
-theorem residue_mul_non_residue_is_non_residue [decidable_eq F]
+theorem residue_mul_non_residue_is_non_residue
 {a b : F} (ha : is_quad_residue a) (hb : is_non_residue b): 
 is_non_residue (a * b) :=
 by simp [mul_comm a, non_residue_mul_residue_is_non_residue hb ha]
 
+/-- `finite_filed.non_residue_mul` is the map `a * _` given a non-residue `a` 
+    defined on `{b : F // is_quad_residue b}`. -/
+def non_residue_mul {a: F} (ha : is_non_residue a) : 
+{b : F // is_quad_residue b} → {b : F // is_non_residue b} :=
+λ b, ⟨a * b, non_residue_mul_residue_is_non_residue ha b.2⟩
 
-/-- `finite_filed.non_residue_mul` is the map `_ * b` given a non-residue `b` defined on `{a : F // is_quad_residue a}`. -/
-def non_residue_mul [decidable_eq F] {b: F} (hb : is_non_residue b) : 
-{a : F // is_quad_residue a} → {a : F // is_non_residue a} :=
-λ a, ⟨b * a.1, non_residue_mul_residue_is_non_residue hb a.2⟩
+open function
 
-lemma non_residue_mul_is_injective [decidable_eq F] {b: F} (hb : is_non_residue b) : 
-function.injective (non_residue_mul hb):=
+/-- proves that `a * _` is injective from residues for a non-residue `a` -/
+lemma is_non_residue.mul_is_injective 
+{a: F} (ha : is_non_residue a) : 
+injective (non_residue_mul ha):=
 begin
-  intros a₁ a₂ h,
+  intros b₁ b₂ h,
   simp [non_residue_mul] at h,
   ext,
-  cases h,
-  {assumption},
-  exact absurd h hb.1
+  convert or.resolve_right h ha.1,
 end
 
-lemma non_residue_mul_is_surjective [decidable_eq F] (hp : p ≠ 2) {b: F} (hb : is_non_residue b) : 
-function.surjective (non_residue_mul hb):=
+/-- proves that `a * _` is surjective onto non-residues for a non-residue `a` -/
+lemma is_non_residue.mul_is_surjective 
+[decidable_eq F] (hp : p ≠ 2) {a: F} (ha : is_non_residue a) : 
+surjective (non_residue_mul ha):=
 begin
-  by_contra f_not_surj,
-  have h_card_lt := card_lt_of_injective_not_surjective (non_residue_mul hb) (non_residue_mul_is_injective hb) f_not_surj,
-  have h_card_eq := card_residues_eq_card_non_residues F hp,
-  exact absurd h_card_eq (ne_of_lt h_card_lt),
+  by_contra, -- prove by contradtiction
+  have lt := card_lt_of_injective_not_surjective 
+    (non_residue_mul ha) (ha.mul_is_injective) h,
+  have eq := card_residues_eq_card_non_residues F hp,
+  linarith
 end
 
-lemma non_residue_mul_non_residue_is_residue [decidable_eq F] (hp : p ≠ 2)
-{b a : F} (hb : is_non_residue b) (ha : is_non_residue a): 
-is_quad_residue (b * a) :=
+theorem non_residue_mul_non_residue_is_residue 
+[decidable_eq F] (hp : p ≠ 2)
+{a b : F} (ha : is_non_residue a) (hb : is_non_residue b): 
+is_quad_residue (a * b) :=
 begin
-  have : b * a ≠ 0, {exact mul_ne_zero hb.1 ha.1},
-  by_contra h',
-  have h := is_non_residue_of_not_residue this h',
-  clear h',
-  have f_surj := non_residue_mul_is_surjective hp hb,
-  simp [function.surjective] at f_surj,
-  specialize f_surj (b * a) h,
-  rcases f_surj with ⟨a', ha', g⟩,
-  simp [non_residue_mul] at g,
-  rcases g with (rfl | rfl),
-  {exact absurd ha'.2 ha.2},
-  {simp at this, assumption},
+  by_contra h, -- prove by contradtiction
+  -- rw `h` to `is_non_residue (a * b)`
+  rw [not_residue_iff_is_non_residue (mul_ne_zero ha.1 hb.1)] at h,
+  -- surj : `a * _` is surjective onto non-residues from residues
+  have surj := ha.mul_is_surjective hp,
+  simp [function.surjective] at surj,
+  -- in particular, non-residue `a * b` is in the range of `a * _`
+  specialize surj (a * b) h,
+  -- say `a * b' = a * b` and `hb' : is_quad_residue b'`
+  rcases surj with ⟨b', hb', eq⟩,
+  simp [non_residue_mul, ha.1] at eq, -- `eq: b' = b`
+  rw [eq] at hb',
+  exact absurd hb'.2 hb.2,
 end
 
 end quad_residues
@@ -535,7 +594,7 @@ if a = 0            then 0 else
 if ∃ b : F, a = b^2 then 1 else
                         -1.
 
-notation `χ` := quad_char  
+notation `χ` := quad_char  -- declare the notation for `quad_char`
 
 @[simp] lemma quad_char_zero_eq_zero : χ (0 : F) = 0 := by simp [quad_char]
 
@@ -592,61 +651,88 @@ by simp [quad_char, *] at *
 (χ (a - b) = 1) ∨ (χ (a - b) = -1) := 
 by {have h':= sub_ne_zero.mpr h, simp* at *}
 
-lemma quad_char_mul (hp : p ≠ 2) (a b : F) : χ (a * b) = χ a * χ b :=
+variables {F p}
+
+theorem quad_char_inv (a : F) : χ a⁻¹ = χ a := 
+begin
+  by_cases ha: a = 0,
+  {simp [ha]}, -- case `a=0`
+  -- splits into cases if `a` is a residue
+  obtain (ga | ga) := residue_or_non_residue ha,
+  -- case 1: `a` is a residue
+  {have g':= inv_is_residue_iff.2 ga, simp*},
+  -- case 2: `a` is a non-residue
+  {have g':= inv_is_non_residue_iff.2 ga, simp*},
+end
+
+theorem quad_char_mul (hp : p ≠ 2) (a b : F) : χ (a * b) = χ a * χ b :=
 begin
   by_cases ha: a = 0,
   any_goals {by_cases hb : b = 0},
-  any_goals {simp*},
-  have : a * b ≠ 0, {exact mul_ne_zero ha hb},
-  by_cases hc : ∃ (c : F), a = c ^ 2,
-  any_goals {by_cases hd : ∃ (d : F), b = d ^ 2},
-  all_goals {simp*},
-  { apply quad_char_eq_one_of this, 
-    rcases hc with ⟨c, rfl⟩, 
-    rcases hd with ⟨d, rfl⟩, 
-    use c * d, ring },
-  { apply quad_char_eq_neg_one_of_non_residue, 
-    exact residue_mul_non_residue_is_non_residue ⟨ha, hc⟩ ⟨hb, hd⟩ },
-  { apply quad_char_eq_neg_one_of_non_residue, 
-    exact non_residue_mul_residue_is_non_residue ⟨ha, hc⟩ ⟨hb, hd⟩ },
-  { apply quad_char_eq_one_of_quad_residue,
-    exact non_residue_mul_non_residue_is_residue hp ⟨ha, hc⟩ ⟨hb, hd⟩ }
+  any_goals {simp*}, -- closes cases when `a = 0` or `b =0`
+  -- splits into cases if `a` is a residue
+  obtain (ga | ga) := residue_or_non_residue ha,
+  -- splits into cases if `b` is a residue
+  any_goals {obtain (gb | gb) := residue_or_non_residue hb},
+  -- case 1 : `a` is, `b` is
+  { have g:= residue_mul_residue_is_residue ga gb, simp* },
+  -- case 2 : `a` is, `b` is not
+  { have g:= residue_mul_non_residue_is_non_residue ga gb, simp* },
+  -- case 1 : `a` is not, `b` is
+  { have g:= non_residue_mul_residue_is_non_residue ga gb, simp* },
+  -- case 4 : `a` is not, `b` is not
+  { have g:= non_residue_mul_non_residue_is_residue hp ga gb, simp* },
 end
 
-theorem quad_char_is_sym_of (h : q ≡ 1 [MOD 4]) (i : F) :
+/-- `χ (-1) = 1` if `q ≡ 1 [MOD 4]`. -/
+@[simp] theorem char_neg_one_eq_one_of (hF : q ≡ 1 [MOD 4]) :
+χ (-1 : F) = 1 :=
+by simp [neg_one_is_residue_of hF]
+
+/-- `χ (-1) = -1` if `q ≡ 3 [MOD 4]`. -/
+@[simp] theorem char_neg_one_eq_neg_one_of (hF : q ≡ 3 [MOD 4]) :
+χ (-1 : F) = -1 :=
+by simp [neg_one_is_non_residue_of hF]
+
+/-- `χ (-i) = χ i` if `q ≡ 1 [MOD 4]`. -/
+theorem quad_char_is_sym_of (hF : q ≡ 1 [MOD 4]) (i : F) :
 χ (-i) = χ i :=
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F,
-  resetI,
-  obtain hp := char_ne_two p (or.inl h),
-  have := quad_char_eq_one_of (by simp) ((neg_one_eq_sq_iff_card_eq_one_mod_four hp).2 h),
-  rw [← one_mul (χ (-i)), ← this, ← quad_char_mul hp],
-  congr, ring,
-  assumption
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
+  resetI, -- resets the instance cache
+  have hp := char_ne_two_of p (or.inl hF), -- hp: p ≠ 2
+  have h := char_neg_one_eq_one_of hF, -- h: χ (-1) = 1
+  -- χ (-i) = 1 * χ (-i) = χ (-1) * χ (-i) = χ ((-1) * (-i))
+  rw [← one_mul (χ (-i)), ← h, ← quad_char_mul hp], 
+  simp, assumption
 end 
 
-theorem quad_char_is_sym_of' (h : q ≡ 1 [MOD 4]) (i j : F) :
+/-- another form of `quad_char_is_sym_of` -/
+theorem quad_char_is_sym_of' (hF : q ≡ 1 [MOD 4]) (i j : F) :
 χ (j - i) = χ (i - j) :=
-by convert quad_char_is_sym_of h (i - j); ring
+by convert quad_char_is_sym_of hF (i - j); ring
 
-theorem quad_char_is_skewsym_of (h : q ≡ 3 [MOD 4]) (i : F) :
+/-- `χ (-i) = - χ i` if `q ≡ 3 [MOD 4]`. -/
+theorem quad_char_is_skewsym_of (hF : q ≡ 3 [MOD 4]) (i : F) :
 χ (-i) = - χ i :=
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F, resetI,
-  obtain ⟨hp, h'⟩ := char_ne_two' p h,
-  have g := mt (neg_one_eq_sq_iff_card_eq_one_mod_four hp).1 h',
-  have := quad_char_eq_neg_one_of (by simp) g,
-  rw [← neg_one_mul (χ i), ← this, ← quad_char_mul hp],
-  ring_nf, assumption
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
+  resetI, -- resets the instance cache
+  have hp := char_ne_two_of p (or.inr hF), -- hp: p ≠ 2
+  have h := char_neg_one_eq_neg_one_of hF, -- h: χ (-1) = 1
+  rw [← neg_one_mul (χ i), ← h, ← quad_char_mul hp],
+  simp, assumption
 end
 
-theorem quad_char_is_skewsym_of' (h : q ≡ 3 [MOD 4]) (i j : F) :
+/-- another form of `quad_char_is_skewsym_of` -/
+theorem quad_char_is_skewsym_of' (hF : q ≡ 3 [MOD 4]) (i j : F) :
 χ (j - i) = - χ (i - j) :=
-by convert quad_char_is_skewsym_of h (i - j); ring
+by convert quad_char_is_skewsym_of hF (i - j); ring
 
-variable (F)
+variable (F) -- use `F` as an explicit parameter
 
-lemma quad_char.sum_in_units_eq_zero (hp : p ≠ 2):
+/-- `∑ a : {a : F // a ≠ 0}, χ (a : F) = 0` if `p ≠ 2`. -/
+lemma quad_char.sum_in_non_zeros_eq_zero (hp : p ≠ 2):
 ∑ a : {a : F // a ≠ 0}, χ (a : F) = 0 :=
 begin
   simp [fintype.sum_split' (λ a : F, a ≠ 0) (λ a : F, ∃ b, a = b^2)],
@@ -660,84 +746,71 @@ begin
         card_residues_eq_card_non_residues' F hp],
   any_goals
   {apply fintype.sum_congr, intros a, have := a.2, simp* at *},
-
 end
 
+/-- `∑ (a : F), χ a = 0` if `p ≠ 2`. -/
 theorem quad_char.sum_eq_zero (hp : p ≠ 2):
 ∑ (a : F), χ a = 0 :=
-begin
-  simp [fintype.sum_split (λ b, b ≠ (0 : F)), 
-        quad_char.sum_in_units_eq_zero F hp],
-  have : ∑ (j : {j : F // ¬j ≠ 0}), χ (j : F) = 
-         ∑ (j : {j : F // ¬j ≠ 0}), 0,
-  {apply fintype.sum_congr, intros a, have := a.2, simp* at *},
-  simp [this],
-end
+by simp [fintype.sum_split (λ b, b = (0 : F)), 
+         quad_char.sum_in_non_zeros_eq_zero F hp, default]
 
-variable {F}
+variable {F} -- use `F` as an implicit parameter
 
-@[simp]
-lemma quad_char.sum_eq_zero_reindex_1 (hp : p ≠ 2) {a : F}: 
+/-- another form of `quad_char.sum_eq_zero` -/
+@[simp] lemma quad_char.sum_eq_zero_reindex_1 (hp : p ≠ 2) {a : F}: 
 ∑ (b : F), χ (a - b) = 0 :=
 begin
   rw ← quad_char.sum_eq_zero F hp,
-  refine fintype.sum_equiv ((equiv.add_left (-a)).trans (equiv.neg _)) _ _ _,
-  simp[add_comm, sub_eq_add_neg],
+  refine fintype.sum_equiv ((equiv.sub_right a).trans (equiv.neg _)) _ _ (by simp),
 end
 
-@[simp]
-lemma quad_char.sum_eq_zero_reindex_2 (hp : p ≠ 2) {b : F}:
+/-- another form of `quad_char.sum_eq_zero` -/
+@[simp] lemma quad_char.sum_eq_zero_reindex_2 (hp : p ≠ 2) {b : F}:
 ∑ (a : F), χ (a - b) = 0 :=
 begin
   rw ← quad_char.sum_eq_zero F hp,
-  refine fintype.sum_equiv (equiv.add_right (-b)) _ _ _,
-  simp[add_comm, sub_eq_add_neg],
+  refine fintype.sum_equiv (equiv.sub_right b) _ _ (by simp),
 end
 
-/-- reindex the terms in the summation -/
-lemma quad_char.sum_mul'_aux {c : F} (hc : c ≠ 0) :
-∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ (b⁻¹ * (b + c)) =
-∑ (z : F) in filter (λ (z : F), ¬z = 1) univ, χ (z) :=
+variable {F} -- use `F` as an implicit parameter
+
+/-- helper of `quad_char.sum_mul'`: reindex the terms in the summation -/
+lemma quad_char.sum_mul'_aux {b : F} (hb : b ≠ 0) :
+∑ (a : F) in filter (λ (a : F), ¬a = 0) univ, χ (1 + a⁻¹ * b) =
+∑ (c : F) in filter (λ (c : F), ¬c = 1) univ, χ (c) :=
 begin
-  refine finset.sum_bij 
-  (λ b hb, b⁻¹ * (b + c)) (λ b hb, _) (λ b hb, rfl) (λ b₁ b₂ h1 h2 h, _) (λ z hz, _),
-  { simp at hb, simp [*, mul_add] at * },
-  { simp at h1 h2, rw mul_add at h, rw mul_add at h, simp* at h, assumption},
-  { use c * (z - 1)⁻¹, simp, simp at hz, push_neg, refine ⟨⟨hc, sub_ne_zero.mpr hz⟩, _⟩, 
-    simp [*, mul_inv_rev', mul_add, mul_assoc, sub_ne_zero.mpr hz] }
+  refine finset.sum_bij (λ a ha, 1 + a⁻¹ * b) (λ a ha, _) 
+    (λ a ha, rfl) (λ a₁ a₂ h1 h2 h, _) (λ c hc, _),
+  { simp at ha, simp* },
+  { simp at h1 h2, field_simp at h, rw (mul_right_inj' hb).1 h.symm },
+  { simp at hc, use b * (c - 1)⁻¹, 
+    simp [*, mul_inv_rev', sub_ne_zero.2 hc] }
 end
 
-theorem quad_char.sum_mul' {c : F} (hc : c ≠ 0) (hp : p ≠ 2): 
-∑ b : F, χ (b) * χ (b + c) = -1 := 
+/-- If `b ≠ 0` and `p ≠ 2`, `∑ a : F, χ (a) * χ (a + b) = -1`. -/
+theorem quad_char.sum_mul' {b : F} (hb : b ≠ 0) (hp : p ≠ 2): 
+∑ a : F, χ (a) * χ (a + b) = -1 := 
 begin
-  rw [finset.sum_split _ (λ b, b ≠ (0 : F))],
+  rw [finset.sum_split _ (λ a, a = (0 : F))],
   simp,
-  have h: ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ (b + c) = 
-          ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ b * χ (b⁻¹ * (b + c)),
+  have h : ∑ (a : F) in filter (λ (a : F), ¬a = 0) univ, χ a * χ (a + b) =
+           ∑ (a : F) in filter (λ (a : F), ¬a = 0) univ, χ (1 + a⁻¹ * b),
   { apply finset.sum_congr rfl,
-    intros b hb, simp at hb, 
-    have : b * b * (b⁻¹ * (b + c)) = b * (b + c), {field_simp, ring},
-    repeat {rw ←(quad_char_mul hp)}, rw ← this,
-    all_goals {assumption} },
-  have h': ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ b * χ (b⁻¹ * (b + c)) = 
-           ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ (b⁻¹ * (b + c)),
-  { apply finset.sum_congr rfl, intros b hb, simp* at *},
-  rw [h, h', quad_char.sum_mul'_aux hc],
-  have g:= @finset.sum_split _ _ _ (@finset.univ F _) (χ) (λ b : F, b ≠ (1 : F)) _,
+    intros a ha, simp at ha,
+    simp [←quad_char_inv a, ←quad_char_mul hp a⁻¹],
+    field_simp },
+  rw [h, quad_char.sum_mul'_aux hb],
+  have g:= @finset.sum_split _ _ _ (@finset.univ F _) (χ) (λ a : F, a = 1) _,
   simp [quad_char.sum_eq_zero F hp] at g,
-  rw [← sub_zero (∑ (z : F) in filter (λ (b : F), ¬b = 1) univ, χ z), g],
-  ring,
-end 
+  linarith
+end
 
-theorem quad_char.sum_mul {a b : F} (hab : a ≠ b) (hp : p ≠ 2): 
-∑ i : F, χ (a - i) * χ (b - i) = -1 := 
+/-- another form of `quad_char.sum_mul'` -/
+theorem quad_char.sum_mul {b c : F} (hbc : b ≠ c) (hp : p ≠ 2): 
+∑ a : F, χ (b - a) * χ (c - a) = -1 := 
 begin
-  have hc := sub_ne_zero.mpr (ne.symm hab),
-  rw ← quad_char.sum_mul' hc hp,
-  refine fintype.sum_equiv ((equiv.add_left (-a)).trans (equiv.neg _)) _ _ _,
-  intros,
-  simp,
-  congr; ring
+  rw ← quad_char.sum_mul' (sub_ne_zero.2 (ne.symm hbc)) hp,
+  refine fintype.sum_equiv ((equiv.sub_right b).trans (equiv.neg _)) _ _ (by simp),
 end
 
 end quad_char

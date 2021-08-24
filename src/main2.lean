@@ -805,7 +805,7 @@ variable {F}
 theorem Hadamard_matrix.Paley_constr_1 (h : q ≡ 3 [MOD 4]): 
 Hadamard_matrix (Paley_constr_1 F) := 
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F, -- derive a character p of F
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
   resetI, -- resets the instance cache
   obtain ⟨hp, h'⟩ := char_ne_two' p h, -- prove p ≠ 2
   refine {..},

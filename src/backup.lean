@@ -100,3 +100,64 @@ begin
 end
 
 -/
+
+/-
+/-- helper of `quad_char.sum_mul'`: reindex the terms in the summation -/
+lemma quad_char.sum_mul'_aux {c : F} (hc : c ≠ 0) :
+∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ (b⁻¹ * (b + c)) =
+∑ (z : F) in filter (λ (z : F), ¬z = 1) univ, χ (z) :=
+begin
+  refine finset.sum_bij 
+  (λ b hb, b⁻¹ * (b + c)) (λ b hb, _) (λ b hb, rfl) (λ b₁ b₂ h1 h2 h, _) (λ z hz, _),
+  { simp at hb, simp [*, mul_add] at * },
+  { simp at h1 h2, rw mul_add at h, rw mul_add at h, simp* at h, assumption},
+  { use c * (z - 1)⁻¹, simp, simp at hz, push_neg, refine ⟨⟨hc, sub_ne_zero.mpr hz⟩, _⟩, 
+    simp [*, mul_inv_rev', mul_add, mul_assoc, sub_ne_zero.mpr hz] }
+end
+-/
+
+/-
+theorem quad_char.sum_mul' {c : F} (hc : c ≠ 0) (hp : p ≠ 2): 
+∑ b : F, χ (b) * χ (b + c) = -1 := 
+begin
+  rw [finset.sum_split _ (λ b, b ≠ (0 : F))],
+  simp,
+  have h: ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ (b + c) = 
+          ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ b * χ (b⁻¹ * (b + c)),
+  { apply finset.sum_congr rfl,
+    intros b hb, simp at hb, 
+    have : b * b * (b⁻¹ * (b + c)) = b * (b + c), {field_simp, ring},
+    repeat {rw ←(quad_char_mul hp)}, rw ← this,
+    all_goals {assumption} },
+  have h': ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ b * χ b * χ (b⁻¹ * (b + c)) = 
+           ∑ (b : F) in filter (λ (b : F), ¬b = 0) univ, χ (b⁻¹ * (b + c)),
+  { apply finset.sum_congr rfl, intros b hb, simp* at *},
+  rw [h, h', quad_char.sum_mul'_aux hc],
+  have g:= @finset.sum_split _ _ _ (@finset.univ F _) (χ) (λ b : F, b ≠ (1 : F)) _,
+  simp [quad_char.sum_eq_zero F hp] at g,
+  rw [← sub_zero (∑ (z : F) in filter (λ (b : F), ¬b = 1) univ, χ z), g],
+  ring,
+end 
+-/
+
+/-
+Can keep this.
+
+variables (F)
+
+/-- The subtype of `F` containing quadratic residues. -/
+def quad_residues := {a : F // is_quad_residue a}
+/-- The set containing quadratic residues of `F`. -/
+def quad_residues_set [decidable_eq F] := {a : F | is_quad_residue a}
+
+/-- The subtype of `F` containing quadratic non-residues. -/
+def non_residues := {a : F // is_non_residue a}
+/-- The set containing quadratic non-residues of `F`. -/
+def non_residues_set [decidable_eq F] := {a : F | is_non_residue a}
+
+instance [decidable_eq F] : fintype (quad_residues F) := 
+by {unfold quad_residues, apply_instance}
+
+instance [decidable_eq F] : fintype (non_residues F) := 
+by {unfold non_residues, apply_instance}
+-/
