@@ -807,7 +807,7 @@ Hadamard_matrix (Paley_constr_1 F) :=
 begin
   obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
   resetI, -- resets the instance cache
-  obtain ⟨hp, h'⟩ := char_ne_two' p h, -- prove p ≠ 2
+  obtain ⟨hp, h'⟩ := char_ne_two_of' p h, -- prove p ≠ 2
   refine {..},
   -- first goal
   {
@@ -990,7 +990,7 @@ replace (Jacobsthal_matrix F) ⬝ (replace (Jacobsthal_matrix F))ᵀ =
 begin
   obtain ⟨p, inst⟩ := char_p.exists F, -- obtains the character p of F
   resetI, -- resets the instance cache
-  obtain hp := char_ne_two p (or.inl h),  -- hp: p ≠ 2
+  obtain hp := char_ne_two_of p (or.inl h),  -- hp: p ≠ 2
   simp [replace_Jacobsthal_mul_transpose_self' h, add_smul],
   rw [mul_transpose_self hp],
   congr' 1, noncomm_ring,
@@ -1061,7 +1061,7 @@ begin
   -- to prove the upper right corner block is `0`.
   { obtain ⟨p, inst⟩ := char_p.exists F, -- obtains the character p of F
     resetI, -- resets the instance cache
-    obtain hp := char_ne_two p (or.inl h), -- hp: p ≠ 2
+    obtain hp := char_ne_two_of p (or.inl h), -- hp: p ≠ 2
     simp [replace_zero, transpose_replace, replace_neg_row_one, 
           replace_Jacobsthal, transpose_K, K_mul, D_is_sym.eq, C_is_sym.eq, 
           matrix.mul_add, matrix.mul_sub, C_mul_D_anticomm, K_sub],
@@ -1535,5 +1535,4 @@ end Hadamard_matrix
 
 
 end matrix
-
 ----------------------------------------------- end of file
