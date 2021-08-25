@@ -52,22 +52,20 @@ section Hadamard_product
 def Hadamard [has_mul α] (A : matrix I J α) (B : matrix I J α) :
 matrix I J α :=
 λ i j, (A i j) * (B i j)
+localized "infix `⊙`:100 := matrix.Hadamard" in matrix -- declares the notation
 
-localized "infix `⊙`:100 := matrix.Hadamard" in matrix
 section basic_properties
 variables (A : matrix I J α) (B : matrix I J α) (C : matrix I J α)
 
-section comm
-variables [comm_semigroup α]
-lemma Had_comm : A ⊙ B = B ⊙ A := by ext; simp [Hadamard, mul_comm]
-end comm
+/- commutativity -/
+lemma Had_comm [comm_semigroup α] : A ⊙ B = B ⊙ A := 
+by ext; simp [Hadamard, mul_comm]
 
-section assoc
-variables [semigroup α]
-lemma Had_assoc : A ⊙ B ⊙ C = A ⊙ (B ⊙ C) :=
+/- associativity -/
+lemma Had_assoc [semigroup α] : A ⊙ B ⊙ C = A ⊙ (B ⊙ C) :=
 by ext; simp [Hadamard, mul_assoc]
-end assoc
 
+/- distributivity -/
 section distrib
 variables [distrib α]
 lemma Had_add : A ⊙ (B + C) = A ⊙ B + A ⊙ C :=
@@ -76,35 +74,30 @@ lemma add_Had : (B + C) ⊙ A = B ⊙ A + C ⊙ A :=
 by ext; simp [Hadamard, right_distrib]
 end distrib
 
+/- scalar multiplication -/
 section scalar
-variables [has_mul α] [has_scalar R α] [is_scalar_tower R α α] [smul_comm_class R α α]
-variables (k : R)
-private lemma aux_smul_mul_assoc (x y : α) :
-(k • x) * y = k • (x * y) := smul_assoc k x y
-private lemma aux_mul_smul_comm (x y : α) :
-x * (k • y) = k • (x * y) := (smul_comm k x y).symm
-@[simp] lemma smul_Had : (k • A) ⊙ B = k • A ⊙ B :=
-  by ext; simp [Hadamard, aux_smul_mul_assoc]
-@[simp] lemma Had_smul : A ⊙ (k • B) = k • A ⊙ B :=
-  by ext; simp [Hadamard, aux_mul_smul_comm]
+@[simp] lemma smul_Had 
+[has_mul α] [has_scalar R α] [is_scalar_tower R α α] (k : R) : 
+(k • A) ⊙ B = k • A ⊙ B :=
+by {ext, simp [Hadamard], exact smul_assoc _ (A i j) _}
+@[simp] lemma Had_smul 
+[has_mul α] [has_scalar R α] [smul_comm_class R α α] (k : R): 
+A ⊙ (k • B) = k • A ⊙ B :=
+by {ext, simp [Hadamard], exact (smul_comm k (A i j) (B i j)).symm}
 end scalar
 
 section zero
 variables [mul_zero_class α]
 @[simp] lemma Had_zero : A ⊙ (0 : matrix I J α) = 0 :=
 by ext; simp [Hadamard]
-@[simp] lemma Had_zero' : A ⊙ ((λ _ _, 0):matrix I J α) = 0 :=
-Had_zero A
 @[simp] lemma zero_Had : (0 : matrix I J α) ⊙ A = 0 :=
 by ext; simp [Hadamard]
-@[simp] lemma zero_Had' : ((λ _ _, 0):matrix I J α) ⊙ A = 0 :=
-zero_Had A
 end zero
 
 section trace
-open_locale matrix
 variables [comm_semiring α] [decidable_eq I] [decidable_eq J]
 
+/--`vᵀ (M₁ ⊙ M₂) w = tr ((diagonal v)ᵀ ⬝ M₁ ⬝ (diagonal w) ⬝ M₂ᵀ)` -/
 lemma tr_identity (v : I → α) (w : J → α) (M₁ : matrix I J α) (M₂ : matrix I J α):
 dot_product (vec_mul  v  (M₁ ⊙ M₂)) w =
 tr ((diagonal v)ᵀ ⬝ M₁ ⬝ (diagonal w) ⬝ M₂ᵀ) :=
@@ -117,11 +110,13 @@ begin
   ring,
 end
 
+/-- `trace` version of `tr_identity` -/
 lemma trace_identity (v : I → α) (w : J → α) (M₁ : matrix I J α) (M₂ : matrix I J α):
 dot_product (vec_mul  v  (M₁ ⊙ M₂)) w =
 trace I α α ((diagonal v)ᵀ ⬝ M₁ ⬝ (diagonal w) ⬝ M₂ᵀ) :=
 by rw [trace_eq_tr, tr_identity]
 
+/-- `∑ (i : I) (j : J), (M₁ ⊙ M₂) i j = tr (M₁ ⬝ M₂ᵀ)` -/
 lemma sum_Had_eq_tr_mul (M₁ : matrix I J α) (M₂ : matrix I J α) :
 ∑ (i : I) (j : J), (M₁ ⊙ M₂) i j = tr (M₁ ⬝ M₂ᵀ) :=
 begin
@@ -131,7 +126,9 @@ begin
   assumption,
 end
 
-lemma tr_identity_over_ℂ (v : I → ℂ) (w : J → ℂ) (M₁ : matrix I J ℂ) (M₂ : matrix I J ℂ):
+/-- `vᴴ (M₁ ⊙ M₂) w = tr ((diagonal v)ᴴ ⬝ M₁ ⬝ (diagonal w) ⬝ M₂ᵀ)` over `ℂ` -/
+lemma tr_identity_over_ℂ 
+(v : I → ℂ) (w : J → ℂ) (M₁ : matrix I J ℂ) (M₂ : matrix I J ℂ):
 dot_product (vec_mul (star v)  (M₁ ⊙ M₂)) w =
 tr ((diagonal v)ᴴ ⬝ M₁ ⬝ (diagonal w) ⬝ M₂ᵀ) :=
 begin
@@ -143,7 +140,9 @@ begin
   ring_nf,
 end
 
-lemma trace_identity_over_ℂ (v : I → ℂ) (w : J → ℂ) (M₁ : matrix I J ℂ) (M₂ : matrix I J ℂ):
+/-- `trace` version of `tr_identity_over_ℂ` -/
+lemma trace_identity_over_ℂ 
+(v : I → ℂ) (w : J → ℂ) (M₁ : matrix I J ℂ) (M₂ : matrix I J ℂ):
 dot_product (vec_mul (star v)  (M₁ ⊙ M₂)) w =
 trace I ℂ ℂ ((diagonal v)ᴴ ⬝ M₁ ⬝ (diagonal w) ⬝ M₂ᵀ) :=
 by rw [trace_eq_tr, tr_identity_over_ℂ]
@@ -278,12 +277,6 @@ lemma K_assoc
 A ⊗ B ⊗ C = A ⊗ (B ⊗ C) :=
 by {ext ⟨⟨a1, b1⟩, c1⟩ ⟨⟨a2, b2⟩, c2⟩, simp[Kronecker, mul_assoc], refl}
 
-section check
-variables [semigroup α] (A : matrix I J α) (B : matrix K L α) (C : matrix M N α) 
-
-#check A ⊗ B ⊗ C = ↑(A ⊗ (B ⊗ C))
-end check
-
 section zero
 variables [mul_zero_class α] (A : matrix I J α)
 @[simp] lemma K_zero : A ⊗ (0 : matrix K L α) = 0 :=
@@ -318,16 +311,16 @@ end neg
 
 /- scalar multiplication -/
 section scalar
-variables [has_mul α] [has_scalar R α] [is_scalar_tower R α α] [smul_comm_class R α α]
-variables (k : R) (A : matrix I J α) (B : matrix K L α)
-private lemma aux_smul_mul_assoc' (x y : α) :
-(k • x) * y = k • (x * y) := smul_assoc k x y
-private  lemma aux_mul_smul_comm' (x y : α) :
-x * (k • y) = k • (x * y) := (smul_comm k x y).symm
-@[simp] lemma smul_K : (k • A) ⊗ B = k • A ⊗ B :=
-  by ext ⟨a,b⟩ ⟨c,d⟩; simp [Kronecker, aux_smul_mul_assoc']
-@[simp] lemma K_smul : A ⊗ (k • B) = k • A ⊗ B :=
-  by ext ⟨a,b⟩ ⟨c,d⟩; simp [Kronecker, aux_mul_smul_comm']
+@[simp] lemma smul_K 
+[has_mul α] [has_scalar R α] [is_scalar_tower R α α]
+(k : R) (A : matrix I J α) (B : matrix K L α) : 
+(k • A) ⊗ B = k • A ⊗ B :=
+by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker], exact smul_assoc _ (A a c) _}
+@[simp] lemma K_smul 
+[has_mul α] [has_scalar R α] [smul_comm_class R α α]
+(k : R) (A : matrix I J α) (B : matrix K L α) : 
+A ⊗ (k • B) = k • A ⊗ B :=
+by {ext ⟨a,b⟩ ⟨c,d⟩, simp [Kronecker], exact (smul_comm k (A a c) _).symm}
 end scalar
 
 /- Kronecker product mixes matrix multiplication -/
