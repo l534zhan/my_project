@@ -372,14 +372,14 @@ variables [comm_ring α] [decidable_eq I]
 
 /-- `matrix.similar_to` defines the proposition that matrix `A` is similar to `B`, denoted as `A ∼ B`. -/
 def similar_to (A B : matrix I I α) := ∃ (P : matrix I I α), is_unit P.det ∧ B = P⁻¹ ⬝ A ⬝ P
-localized "notation `∼`:50 := similar_to" in matrix
+localized "notation `∼`:50 := matrix.similar_to" in matrix
 
 /-- An equivalent definition of matrix similarity `similar_to`. -/
 def similar_to' (A B : matrix I I α) := ∃ (P : matrix I I α), is_unit P ∧ B = P⁻¹ ⬝ A ⬝ P
 
 /-- `matrix.perm_similar_to` defines the proposition that matrix `A` is permutation-similar to `B`, denoted as `A ∼ₚ B`.-/
 def perm_similar_to (A B : matrix I I α) := ∃ (P : matrix I I α), P.is_perm ∧ B = P⁻¹ ⬝ A ⬝ P
-localized "notation `∼ₚ`:50 := perm_similar_to" in matrix
+localized "notation `∼ₚ`:50 := matrix.perm_similar_to" in matrix
 
 /-- Proves the equivalence of `matrix.similar_to` and `matrix.similar_to'`. -/
 lemma similar_to_iff_similar_to' (A B : matrix I I α) : similar_to A B ↔ similar_to' A B :=

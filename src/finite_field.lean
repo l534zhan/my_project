@@ -7,7 +7,6 @@ import field_theory.finite.basic
 import group_theory.quotient_group
 import monoid_hom
 import set_finset_fintype
-import tactic.gptf
 
 /-!
 # Finite fields
@@ -46,7 +45,7 @@ and `q` is notation for the cardinality of `F`, and `p` is the character of `F`.
 
 -/
 
-local attribute [instance] set_fintype
+--local attribute [instance] set_fintype
 --local attribute [-instance] set.fintype_univ
 
 set_option pp.beta true
@@ -253,8 +252,6 @@ begin
     -- case `g ^ (k * 2) = -1`
     { use g ^ k, simp [← hg, pow_mul] } },
 end
-
-#check subgroup.gpowers
 
 /-- `-1` is a square in `F` iff the cardinal `q ≡ 1 [MOD 4]`. -/
 lemma neg_one_eq_sq_iff (hp: p ≠ 2) : 

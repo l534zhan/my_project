@@ -292,14 +292,13 @@ end zero
 /-- `1 ⊗ 1 = 1`. 
     The Kronecker product of two identity matrices is an identity matrix. -/
 @[simp] lemma one_K_one 
-[monoid_with_zero α] [decidable_eq I] [decidable_eq J] : 
+[mul_zero_one_class α] [decidable_eq I] [decidable_eq J] : 
 (1 :matrix I I α) ⊗ (1 :matrix J J α) = 1 :=
 begin
   ext ⟨a,b⟩ ⟨c,d⟩,
-  simp [Kronecker],
   by_cases h: a = c,
-  {by_cases g: b = d; simp* at *},
-  simp* at *,
+  any_goals {by_cases g: b = d},
+  any_goals {simp[*, Kronecker] at *},
 end
 
 section neg

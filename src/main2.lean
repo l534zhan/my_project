@@ -524,7 +524,7 @@ Hᵀ + H = 2
 
 /-- regular Hadamard matrix -/
 def is_regular : Prop :=
-∀ i j, H.row_sum i = H.col_sum j
+∀ i j, ∑ b, H i b = ∑ a, H a j
 
 variable {H}
 

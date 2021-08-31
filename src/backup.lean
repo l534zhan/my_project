@@ -160,4 +160,5 @@ by {unfold quad_residues, apply_instance}
 
 instance [decidable_eq F] : fintype (non_residues F) := 
 by {unfold non_residues, apply_instance}
+
 -/

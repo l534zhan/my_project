@@ -291,4 +291,6 @@ begin
   -/
 end
 
-
+noncomputable
+example {α : Type*} (h : ∃ a : α, true) : α :=
+classical.some h
