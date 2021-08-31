@@ -950,13 +950,13 @@ lemma replace_neg_row_one :
 replace (-row 1 : matrix unit F ℚ) = (-row 1) ⊗ D :=
 replace_matrix_of_no_zero_entry (λ a i, by simp [row])
 
-/-- `replace J = (J + 1) ⊗ D + I ⊗ (C - D)` -/
+/-- `replace J = J ⊗ D + I ⊗ C` -/
 lemma replace_Jacobsthal : 
 replace (Jacobsthal_matrix F) = 
-((Jacobsthal_matrix F) + 1) ⊗ D + 1 ⊗ (C - D):= 
+(Jacobsthal_matrix F) ⊗ D + 1 ⊗ C:= 
 begin
   ext ⟨i, a⟩ ⟨j, b⟩,
-  by_cases i = j, --inspect the diagonal and non-diagonal entries respectively
+  by_cases i = j, --inspect the diagonal and non-diagonal entries respectively 
   any_goals {simp [h, Jacobsthal_matrix, replace, Kronecker]},
 end
 
@@ -977,9 +977,9 @@ lemma replace_Jacobsthal_mul_transpose_self' (h : q ≡ 1 [MOD 4]) :
 replace (Jacobsthal_matrix F) ⬝ (replace (Jacobsthal_matrix F))ᵀ = 
 ((Jacobsthal_matrix F) ⬝ (Jacobsthal_matrix F)ᵀ + 1) ⊗ E :=
 begin
-  simp [replace_Jacobsthal, transpose_K, matrix.add_mul, matrix.mul_add, 
-        K_mul, matrix.sub_mul, matrix.mul_sub, D_is_sym.eq, C_is_sym.eq, 
-        C_mul_D_anticomm, ←sub_add, K_sub, add_K, (is_sym_of h).eq],
+  simp [transpose_replace, (is_sym_of h).eq],
+  simp [replace_Jacobsthal, matrix.add_mul, matrix.mul_add,
+        K_mul, C_mul_D_anticomm, add_K],
   noncomm_ring
 end
 
@@ -1062,12 +1062,11 @@ begin
   { obtain ⟨p, inst⟩ := char_p.exists F, -- obtains the character p of F
     resetI, -- resets the instance cache
     obtain hp := char_ne_two_of p (or.inl h), -- hp: p ≠ 2
-    simp [replace_zero, transpose_replace, replace_neg_row_one, 
-          replace_Jacobsthal, transpose_K, K_mul, D_is_sym.eq, C_is_sym.eq, 
-          matrix.mul_add, matrix.mul_sub, C_mul_D_anticomm, K_sub],
-    rw [row_one_mul_transpose hp],
-    simp [add_sub],
-    assumption }
+    simp [transpose_replace, (is_sym_of h).eq],
+    simp [replace_zero, replace_neg_row_one, replace_Jacobsthal,
+          matrix.mul_add, K_mul, C_mul_D_anticomm],
+    rw [←(is_sym_of h).eq, row_one_mul_transpose hp],
+    simp, assumption }
 end
 
 /- ## end Paley_constr_2 -/
