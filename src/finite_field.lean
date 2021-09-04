@@ -8,6 +8,8 @@ import group_theory.quotient_group
 import monoid_hom
 import set_finset_fintype
 
+import tactic.gptf
+
 /-!
 # Finite fields
 
@@ -133,7 +135,22 @@ begin
   simp[*, units.ext_iff] at *,
 end
 
-variables {p}
+variables (F) {p} 
+
+@[simp] 
+lemma two_eq_zero (hp : p = 2) : (2 : F) = 0 :=
+by convert (char_p.cast_eq_zero_iff F p 2).2 _; simp [hp]
+
+@[simp]
+lemma neg_one_eq_one_of (hp : p = 2) : (-1 : F) = 1 :=
+calc (-1 : F) = (-1 : F) + 0 : by simp
+          ... = (-1 : F) + (1 + 1)  : by {congr, norm_num [two_eq_zero F hp]}
+          ... = 1 : by simp
+
+@[simp]
+lemma neg_one_eq_one_of' (hp: p = 2) : (-1 : units F) = 1 := 
+by simp [units.ext_iff, neg_one_eq_one_of F hp]
+                  
 
 /-- If the character of `F` is not `2`, `-1` is not equal to `1` in `F`. -/
 lemma neg_one_ne_one_of (hp: p ≠ 2) : (-1 : F) ≠ 1 :=
@@ -149,7 +166,9 @@ end
 
 /-- If the character of `F` is not `2`, `-1` is not equal to `1` in `units F`. -/
 lemma neg_one_ne_one_of' (hp: p ≠ 2) : (-1 : units F) ≠ 1 := 
-by simp [units.ext_iff]; exact neg_one_ne_one_of hp
+by simp [units.ext_iff, neg_one_ne_one_of F hp]
+
+variable {F}
 
 /-- For `x : F`, `x^2 = 1 ↔ x = 1 ∨ x = -1`. -/
 lemma sq_eq_one_iff_eq_one_or_eq_neg_one (x : F) :
@@ -183,8 +202,8 @@ begin
     {exact ⟨nat.prime_two⟩}, 
     resetI, -- resets the instance cache.
     convert order_of_eq_prime hx _,
-    rw h,
-    exact neg_one_ne_one_of hp }
+    rw [h],
+    exact neg_one_ne_one_of F hp }
 end
 
 /-- The "units" version of `order_of_eq_two_iff`. -/
@@ -217,13 +236,13 @@ begin
     -- g₁ : a ≠ 1
     have g₁ : a ≠ 1, 
     { rintro rfl, simp at h',
-      exact absurd h' (neg_one_ne_one_of' hp) },
+      exact absurd h' (neg_one_ne_one_of' F hp) },
     -- h₁ : order_of a ≠ 1
     have h₁ := mt order_of_eq_one_iff.1 g₁, 
     -- g₂ : a ≠ -1
     have g₂ : a ≠ -1, 
     { rintro rfl, simp [pow_two] at h', 
-      exact absurd h' (neg_one_ne_one_of' hp) },
+      exact absurd h' (neg_one_ne_one_of' F hp) },
     -- h₂ : order_of a ≠ 2 
     have h₂ := mt (order_of_eq_two_iff' hp a).1 g₂,
     -- ha : order_of a = 4
@@ -432,28 +451,46 @@ begin
   simp [npow_rec],
 end
 
-lemma sq.card_ker_carrier_eq [decidable_eq F] (hp: p ≠ 2) : 
+lemma sq.ker_carrier_eq_of_char_eq_two (hp: p = 2): 
+(sq F).ker.carrier = {1} :=
+by simp [sq.ker_carrier_eq, neg_one_eq_one_of' F hp]
+
+lemma sq.card_ker_carrier_eq_of_char_ne_two [decidable_eq F] (hp: p ≠ 2) : 
 fintype.card (sq F).ker.carrier = 2 :=
 begin
   simp [sq.ker_carrier_eq F],
   convert @set.card_insert _ (1 : units F) {-1} _ _ _; simp,
-  exact ne.symm (neg_one_ne_one_of' hp),
+  exact ne.symm (neg_one_ne_one_of' F hp),
 end
 
 /-- `|(sq F).ker| = 2` if `p ≠ 2` -/
-theorem sq.card_ker_eq [decidable_eq F] (hp: p ≠ 2) : 
+theorem sq.card_ker_eq_of_char_ne_two [decidable_eq F] (hp: p ≠ 2) : 
 fintype.card (sq F).ker = 2 :=
-by rw [←sq.card_ker_carrier_eq F hp]; refl
+by rw [←sq.card_ker_carrier_eq_of_char_ne_two F hp]; refl
+
+lemma sq.card_ker_carrier_eq_of_char_eq_two [decidable_eq F] (hp: p = 2) : 
+fintype.card (sq F).ker.carrier = 1 :=
+by simp [sq.ker_carrier_eq_of_char_eq_two F hp]
+
+/-- `|(sq F).ker| = 1` if `p = 2` -/
+theorem sq.card_ker_eq_of_char_eq_two [decidable_eq F] (hp: p = 2) : 
+fintype.card (sq F).ker = 1 :=
+by rw [←sq.card_ker_carrier_eq_of_char_eq_two F hp]; refl
 
 end sq_function
 /- ### end sq_function -/
 
 variable (F)
 
-/-- `|units F| = |{a : F // is_quad_residue a}| * 2` -/
+/-- `|units F| = |{a : F // is_quad_residue a}| * 2` if `p ≠ 2` -/
 theorem card_units_eq_card_residues_mul_two [decidable_eq F] (hp: p ≠ 2) :
 fintype.card (units F) = fintype.card {a : F // is_quad_residue a} * 2 :=
-by rwa [sq.iso, sq.card_range_eq, sq.card_ker_eq F hp]
+by rwa [sq.iso, sq.card_range_eq, sq.card_ker_eq_of_char_ne_two F hp]
+
+/-- `|units F| = |{a : F // is_quad_residue a}|` if `p = 2` -/
+theorem card_units_eq_card_residues [decidable_eq F] (hp: p = 2) :
+fintype.card (units F) = fintype.card {a : F // is_quad_residue a}:=
+by simp [sq.iso, sq.card_range_eq, sq.card_ker_eq_of_char_eq_two F hp]
 
 /-- `|{a : F // is_quad_residue a}| = |{a : F // is_non_residue a}|`-/
 theorem card_residues_eq_card_non_residues
@@ -477,6 +514,20 @@ by convert card_residues_eq_card_non_residues F hp
 
 
 variable {F} -- re-declares `F` as an implicit variable
+
+lemma false_of_is_non_residue  
+(hp : p = 2) {a : F} (ha: is_non_residue a) : false :=
+begin
+  classical,
+  have h := eq_one_add_card_residues_add_card_non_residues F,
+  rw [card_units', card_units_eq_card_residues F hp, add_comm _ 1, add_assoc] at h,
+  have g : fintype.card {a // is_non_residue a} = 0 := 
+           add_right_eq_self.mp (congr_fun (congr_arg (+) ((add_right_inj 1).mp h).symm) _),
+  clear h,
+  rw [card_eq_zero_iff] at g,
+  apply g.false,
+  exact ⟨a, ha⟩,
+end
 
 example : (0 : F)⁻¹ = 0 := by simp
 
