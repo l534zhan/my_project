@@ -442,13 +442,13 @@ theorem sq.card_range_eq [decidable_eq F] :
 fintype.card (sq F).range = fintype.card {a : F // is_quad_residue a} :=
 by apply fintype.card_congr (sq.range_equiv F)
 
+--lemma test : ↥(sq F).ker = {a : units F // a = 1 ∨ a = -1} := sorry
+
 lemma sq.ker_carrier_eq : 
 (sq F).ker.carrier = {1, -1} :=
 begin
-  simp [ker, subgroup.comap, set.preimage, sq],
-  ext, simp, 
-  convert sq_eq_one_iff_eq_one_or_eq_neg_one' x,
-  simp [npow_rec],
+  ext, 
+  simp [sq, mem_ker, ←pow_two, sq_eq_one_iff_eq_one_or_eq_neg_one' x],
 end
 
 lemma sq.ker_carrier_eq_of_char_eq_two (hp: p = 2): 
@@ -502,8 +502,6 @@ begin
   simp [card_units', card_units_eq_card_residues_mul_two F hp] at eq,
   linarith
 end
-/- `card_units_eq_card_residues_mul_two F hp` is a built API that proves
-   `|F| = 1 + |{a : F // is_quad_residue a}| + |{a : F // is_non_residue a}|` -/
 
 /-- unfolded version of `card_residues_eq_card_non_residues` -/
 theorem card_residues_eq_card_non_residues'
@@ -515,7 +513,7 @@ by convert card_residues_eq_card_non_residues F hp
 
 variable {F} -- re-declares `F` as an implicit variable
 
-lemma false_of_is_non_residue  
+lemma false_of_char_eq_two_of_is_non_residue  
 (hp : p = 2) {a : F} (ha: is_non_residue a) : false :=
 begin
   classical,
@@ -527,6 +525,13 @@ begin
   rw [card_eq_zero_iff] at g,
   apply g.false,
   exact ⟨a, ha⟩,
+end
+
+lemma is_quad_residue_of_char_eq_two (hp : p = 2) {a : F} (ha : a ≠ 0) : 
+  is_quad_residue a :=
+begin
+  by_contra,
+  exact false_of_char_eq_two_of_is_non_residue hp (is_non_residue_of_not_residue ha h),
 end
 
 example : (0 : F)⁻¹ = 0 := by simp
@@ -607,10 +612,13 @@ begin
 end
 
 theorem non_residue_mul_non_residue_is_residue 
-[decidable_eq F] (hp : p ≠ 2)
-{a b : F} (ha : is_non_residue a) (hb : is_non_residue b): 
+[decidable_eq F] {a b : F} (ha : is_non_residue a) (hb : is_non_residue b): 
 is_quad_residue (a * b) :=
 begin
+  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
+  resetI, -- resets the instance cache
+  by_cases hp : p = 2,
+  {apply is_quad_residue_of_char_eq_two hp, simp [ha.1, hb.1], assumption},
   by_contra h, -- prove by contradtiction
   -- rw `h` to `is_non_residue (a * b)`
   rw [not_residue_iff_is_non_residue (mul_ne_zero ha.1 hb.1)] at h,
@@ -713,7 +721,7 @@ begin
   {have g':= inv_is_non_residue_iff.2 ga, simp*},
 end
 
-theorem quad_char_mul (hp : p ≠ 2) (a b : F) : χ (a * b) = χ a * χ b :=
+theorem quad_char_mul (a b : F) : χ (a * b) = χ a * χ b :=
 begin
   by_cases ha: a = 0,
   any_goals {by_cases hb : b = 0},
@@ -729,7 +737,7 @@ begin
   -- case 1 : `a` is not, `b` is
   { have g:= non_residue_mul_residue_is_non_residue ga gb, simp* },
   -- case 4 : `a` is not, `b` is not
-  { have g:= non_residue_mul_non_residue_is_residue hp ga gb, simp* },
+  { have g:= non_residue_mul_non_residue_is_residue ga gb, simp* },
 end
 
 /-- `χ (-1) = 1` if `q ≡ 1 [MOD 4]`. -/
@@ -746,13 +754,10 @@ by simp [neg_one_is_non_residue_of hF]
 theorem quad_char_is_sym_of (hF : q ≡ 1 [MOD 4]) (i : F) :
 χ (-i) = χ i :=
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
-  resetI, -- resets the instance cache
-  have hp := char_ne_two_of p (or.inl hF), -- hp: p ≠ 2
   have h := char_neg_one_eq_one_of hF, -- h: χ (-1) = 1
   -- χ (-i) = 1 * χ (-i) = χ (-1) * χ (-i) = χ ((-1) * (-i))
-  rw [← one_mul (χ (-i)), ← h, ← quad_char_mul hp], 
-  simp, assumption
+  rw [← one_mul (χ (-i)), ← h, ← quad_char_mul], 
+  simp,
 end 
 
 /-- another form of `quad_char_is_sym_of` -/
@@ -764,12 +769,9 @@ by convert quad_char_is_sym_of hF (i - j); ring
 theorem quad_char_is_skewsym_of (hF : q ≡ 3 [MOD 4]) (i : F) :
 χ (-i) = - χ i :=
 begin
-  obtain ⟨p, inst⟩ := char_p.exists F, -- derive the char p of F
-  resetI, -- resets the instance cache
-  have hp := char_ne_two_of p (or.inr hF), -- hp: p ≠ 2
   have h := char_neg_one_eq_neg_one_of hF, -- h: χ (-1) = 1
-  rw [← neg_one_mul (χ i), ← h, ← quad_char_mul hp],
-  simp, assumption
+  rw [← neg_one_mul (χ i), ← h, ← quad_char_mul],
+  simp, 
 end
 
 /-- another form of `quad_char_is_skewsym_of` -/
@@ -845,7 +847,7 @@ begin
            ∑ (a : F) in filter (λ (a : F), ¬a = 0) univ, χ (1 + a⁻¹ * b),
   { apply finset.sum_congr rfl,
     intros a ha, simp at ha,
-    simp [←quad_char_inv a, ←quad_char_mul hp a⁻¹],
+    simp [←quad_char_inv a, ←quad_char_mul a⁻¹],
     field_simp },
   rw [h, quad_char.sum_mul'_aux hb],
   have g:= @finset.sum_split _ _ _ (@finset.univ F _) (χ) (λ a : F, a = 1) _,
